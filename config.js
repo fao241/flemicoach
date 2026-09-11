@@ -4,5 +4,5 @@
 export const CONFIG = {
   SUPABASE_URL: 'https://cuobjxpznolowmokapwa.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_JIOmn7roqlRpvzDlfCvg_A_SUxHKakH',
-  APP_URL: 'https://YOUR_GITHUB_USER.github.io/flemicoach/'
+  APP_URL: 'https://fao241.github.io/flemicoach/'
 };
