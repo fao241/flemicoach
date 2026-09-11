@@ -1,0 +1,49 @@
+import { supabase } from './supabase.js';
+
+const $=id=>document.getElementById(id);
+const esc=(v='')=>String(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const teamId=()=>$('teamSelect')?.value||null;
+const time5=v=>String(v||'').slice(0,5);
+const fmtDate=iso=>{if(!iso)return'';const[y,m,d]=iso.split('-').map(Number);return new Intl.DateTimeFormat('fr-FR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'}).format(new Date(y,m-1,d,12));};
+const eventDateTime=e=>new Date(`${e.event_date}T${time5(e.start_time)||'23:59'}:00`);
+const isPast=e=>eventDateTime(e)<new Date();
+let mode='upcoming';
+let period='season';
+
+function injectStyle(){if($('lifecycleStyle'))return;document.head.insertAdjacentHTML('beforeend',`<style id="lifecycleStyle">
+.lifecycle-switch{display:flex;gap:8px;margin:14px 0}.lifecycle-switch .btn.active{background:#111827;color:#fff}.lifecycle-card{cursor:pointer}.lifecycle-card:hover{transform:translateY(-1px)}.response-chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}.response-chip{font-size:.78rem;padding:5px 9px;border-radius:999px;background:#f3f4f6}.response-chip.ok{background:#dcfce7}.response-chip.no{background:#fee2e2}.response-chip.wait{background:#fef3c7}.response-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.response-column{padding:12px;border-radius:14px;background:#f8fafc}.response-column h4{margin:0 0 8px}.response-name{font-size:.88rem;padding:5px 0;border-bottom:1px solid #e5e7eb}.response-name:last-child{border:0}.history-empty{padding:24px;text-align:center}.stats-period{margin:12px 0 16px}.stats-period select{max-width:230px}@media(max-width:700px){.response-columns{grid-template-columns:1fr}.lifecycle-switch{display:grid;grid-template-columns:1fr 1fr}}
+</style>`);}
+
+async function loadData(){
+ const tid=teamId();if(!tid)return null;
+ const [{data:events,error:ee},{data:players,error:pe}]=await Promise.all([
+  supabase.from('events').select('*').eq('team_id',tid).order('event_date',{ascending:false}).order('start_time',{ascending:false}),
+  supabase.from('players').select('id,name,active').eq('team_id',tid).eq('active',true).order('name')
+ ]);if(ee||pe)throw(ee||pe);
+ const ids=(events||[]).map(e=>e.id);let attendance=[],callups=[];
+ if(ids.length){const[a,c]=await Promise.all([supabase.from('attendance').select('*').in('event_id',ids),supabase.from('match_callups').select('*').in('event_id',ids)]);if(a.error)throw a.error;if(c.error)throw c.error;attendance=a.data||[];callups=c.data||[];}
+ return{events:events||[],players:players||[],attendance,callups};
+}
+function eligible(e,d){if(e.type!=='match')return d.players;const ids=new Set(d.callups.filter(c=>c.event_id===e.id).map(c=>c.player_id));return d.players.filter(p=>ids.has(p.id));}
+function responseState(e,d){const ps=eligible(e,d),am=new Map(d.attendance.filter(a=>a.event_id===e.id).map(a=>[a.player_id,a]));const groups={PRESENT:[],ABSENT:[],NO_REPLY:[]};for(const p of ps){const a=am.get(p.id),s=a?.declared_status==='PRESENT'?'PRESENT':a?.declared_status==='ABSENT'?'ABSENT':'NO_REPLY';groups[s].push({p,a});}return{ps,am,groups};}
+
+function ensureDetail(){if($('eventResponseDialog'))return;document.body.insertAdjacentHTML('beforeend',`<dialog id="eventResponseDialog" class="modal"><div class="modal-box"><div class="row between gap"><div><div class="eyebrow" id="erdType"></div><h3 id="erdTitle"></h3><div id="erdMeta" class="muted small"></div></div><button type="button" id="erdClose" class="btn ghost small-btn">Fermer</button></div><div id="erdSummary" class="response-chips"></div><div id="erdColumns" class="response-columns"></div><div id="erdActual" class="muted small top-gap-sm"></div></div></dialog>`);$('erdClose').onclick=()=>$('eventResponseDialog').close();}
+async function openDetail(id){const d=await loadData(),e=d?.events.find(x=>x.id===id);if(!e)return;ensureDetail();const r=responseState(e,d);$('erdType').textContent=e.type==='match'?'MATCH':e.type==='training'?'ENTRAÎNEMENT':'ÉVÉNEMENT';$('erdTitle').textContent=e.title;$('erdMeta').textContent=`${fmtDate(e.event_date)} · ${time5(e.start_time)}${e.location?' · '+e.location:''}`;$('erdSummary').innerHTML=`<span class="response-chip ok">✓ ${r.groups.PRESENT.length} présent(s)</span><span class="response-chip no">✕ ${r.groups.ABSENT.length} absent(s)</span><span class="response-chip wait">? ${r.groups.NO_REPLY.length} sans réponse</span>`;const col=(title,arr,empty)=>`<div class="response-column"><h4>${title}</h4>${arr.length?arr.map(x=>`<div class="response-name">${esc(x.p.name)}${x.a?.note?`<div class="muted small">${esc(x.a.note)}</div>`:''}</div>`).join(''):`<div class="muted small">${empty}</div>`}</div>`;$('erdColumns').innerHTML=col('Présents',r.groups.PRESENT,'Aucun')+col('Absents',r.groups.ABSENT,'Aucun')+col('Sans réponse',r.groups.NO_REPLY,'Aucun');const actual=[...r.am.values()].filter(a=>a.actual_status);$('erdActual').textContent=isPast(e)?(actual.length?`Présence réelle validée pour ${actual.length}/${r.ps.length} joueur(s).`:'Présence réelle pas encore validée.'):'Réponses des parents en cours.';$('eventResponseDialog').showModal();}
+
+async function renderLifecycle(){
+ const cal=$('calendar');if(!cal||!cal.classList.contains('active-view')||!teamId())return;injectStyle();let host=$('lifecycleHost');if(!host){host=document.createElement('div');host.id='lifecycleHost';const list=$('calendarList');list?.parentNode.insertBefore(host,list);}
+ const d=await loadData();if(!d)return;const items=d.events.filter(e=>mode==='past'?isPast(e):!isPast(e));if(mode==='upcoming')items.sort((a,b)=>eventDateTime(a)-eventDateTime(b));
+ host.innerHTML=`<div class="lifecycle-switch"><button class="btn ${mode==='upcoming'?'active':''}" data-life="upcoming">À venir</button><button class="btn ${mode==='past'?'active':''}" data-life="past">Historique</button></div><div class="stack">${items.length?items.map(e=>{const r=responseState(e,d),answered=r.groups.PRESENT.length+r.groups.ABSENT.length;return`<div class="card lifecycle-card" data-event-detail="${e.id}"><div class="row between gap wrap"><div><div class="eyebrow">${e.type==='match'?'Match':e.type==='training'?'Entraînement':'Événement'}${mode==='past'?' · Passé':''}</div><strong>${esc(e.title)}</strong><div class="muted small">${esc(fmtDate(e.event_date))} · ${esc(time5(e.start_time))}${e.location?' · '+esc(e.location):''}</div></div><span class="pill">${answered}/${r.ps.length} réponses</span></div><div class="response-chips"><span class="response-chip ok">${r.groups.PRESENT.length} présents</span><span class="response-chip no">${r.groups.ABSENT.length} absents</span><span class="response-chip wait">${r.groups.NO_REPLY.length} sans réponse</span></div></div>`}).join(''):`<div class="card history-empty muted">${mode==='past'?'Aucun événement passé.':'Aucun événement à venir.'}</div>`}</div>`;
+ host.querySelectorAll('[data-life]').forEach(b=>b.onclick=()=>{mode=b.dataset.life;renderLifecycle();});host.querySelectorAll('[data-event-detail]').forEach(x=>x.onclick=()=>openDetail(x.dataset.eventDetail));
+ const old=$('calendarList');if(old)old.style.display='none';const match=$('matchActions');if(match)match.style.display=mode==='upcoming'?'':'none';
+}
+
+function periodStart(kind){const n=new Date();if(kind==='month')return new Date(n.getFullYear(),n.getMonth(),1);if(kind==='30')return new Date(n.getTime()-30*86400000);return null;}
+async function renderPeriodStats(){
+ const dash=$('dashboard');if(!dash||!dash.classList.contains('active-view')||!teamId())return;let host=$('periodStats');if(!host){const seasonTitle=[...dash.querySelectorAll('h2')].find(x=>x.textContent.includes('Saison en chiffres'))?.closest('section');if(!seasonTitle)return;host=document.createElement('div');host.id='periodStats';seasonTitle.appendChild(host);}
+ const d=await loadData();if(!d)return;const start=periodStart(period);const events=d.events.filter(e=>isPast(e)&&(!start||eventDateTime(e)>=start));let eligibleCount=0,responses=0,actualCount=0,actualPresent=0,noShows=0;for(const e of events){const r=responseState(e,d);eligibleCount+=r.ps.length;for(const p of r.ps){const a=r.am.get(p.id);if(a?.declared_status==='PRESENT'||a?.declared_status==='ABSENT')responses++;if(a?.actual_status){actualCount++;if(a.actual_status==='PRESENT')actualPresent++;if(a.declared_status==='PRESENT'&&a.actual_status==='ABSENT')noShows++;}}}
+ const pct=(a,b)=>b?Math.round(a/b*100):0;host.innerHTML=`<div class="stats-period"><label class="field"><span>Période des statistiques</span><select id="statsPeriodSelect"><option value="season" ${period==='season'?'selected':''}>Saison entière</option><option value="month" ${period==='month'?'selected':''}>Ce mois</option><option value="30" ${period==='30'?'selected':''}>30 derniers jours</option></select></label></div><div class="stats-grid four"><div class="card stat"><strong>${pct(actualPresent,actualCount)} %</strong><span>Présence validée</span></div><div class="card stat"><strong>${pct(responses,eligibleCount)} %</strong><span>Réponses parents</span></div><div class="card stat"><strong>${noShows}</strong><span>No-show</span></div><div class="card stat"><strong>${events.length}</strong><span>Événements passés</span></div></div>`;$('statsPeriodSelect').onchange=e=>{period=e.target.value;renderPeriodStats();};
+}
+
+function refresh(){setTimeout(()=>{renderLifecycle().catch(console.error);renderPeriodStats().catch(console.error);},180);}
+document.querySelector('[data-view="calendar"]')?.addEventListener('click',refresh);document.querySelector('[data-view="dashboard"]')?.addEventListener('click',refresh);$('teamSelect')?.addEventListener('change',refresh);window.addEventListener('focus',refresh);setInterval(refresh,60000);setTimeout(refresh,700);setTimeout(refresh,1600);
