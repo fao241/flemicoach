@@ -57,7 +57,7 @@ Ouvre `config.js` :
 export const CONFIG = {
   SUPABASE_URL: 'https://xxxxxxxx.supabase.co',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_xxxxxxxx',
-  APP_URL: 'https://VOTRE_COMPTE.github.io/flemicoach/'
+  APP_URL: 'https://fao241.github.io/flemicoach/'
 };
 ```
 
