@@ -137,9 +137,9 @@ async function renderMatchActions(){
   const rows=[];
   for(const e of future){
     const ids=await getCallups(e.id);
-    rows.push(`<div class="card match-action-card"><div class="row between gap wrap"><div><div class="eyebrow">Match · ${ids.size} convoqué(s)</div><strong>${esc(e.title)}</strong><div class="muted small">${esc(fmtDate(e.event_date))} · ${esc(time5(e.start_time))}${e.location?' · '+esc(e.location):''}</div></div><div class="row gap wrap"><button type="button" class="btn ghost small-btn" data-callup="${e.id}">Choisir les convoqués</button><button type="button" class="btn small-btn" data-copy-match="${e.id}">Copier</button><button type="button" class="btn primary small-btn" data-share-match="${e.id}">Partager</button></div></div></div>`);
+    rows.push(`<div class="card match-action-card"><div class="row between gap wrap"><div><div class="eyebrow">Match · ${ids.size} convoqué(s)</div><strong>${esc(e.title)}</strong><div class="muted small">${esc(fmtDate(e.event_date))} · ${esc(time5(e.start_time))}${e.location?' · '+esc(e.location):''}</div></div><div class="row gap wrap"><button type="button" class="btn ghost small-btn" data-callup="${e.id}">Choisir les convoqués</button><button type="button" class="btn small-btn" data-copy-match="${e.id}">Copier</button><button type="button" class="btn primary small-btn" data-share-match="${e.id}">WhatsApp</button></div></div></div>`);
   }
-  box.innerHTML=`<div class="section-head"><div><h3>Convocations</h3><div class="muted small">Choisis les joueurs puis partage dans ton groupe WhatsApp.</div></div></div>${rows.join('')}`;
+  box.innerHTML=`<div class="section-head"><div><h3>Convocations</h3><div class="muted small">Choisis les joueurs puis envoie la convocation sur WhatsApp.</div></div></div>${rows.join('')}`;
   box.querySelectorAll('[data-callup]').forEach(b=>b.onclick=()=>openCallups(b.dataset.callup));
   box.querySelectorAll('[data-share-match]').forEach(b=>b.onclick=()=>{const e=future.find(x=>x.id===b.dataset.shareMatch);if(e)shareEvent(e);});
   box.querySelectorAll('[data-copy-match]').forEach(b=>b.onclick=()=>{const e=future.find(x=>x.id===b.dataset.copyMatch);if(e)copyEventMessage(e);});
@@ -149,7 +149,7 @@ function wireShareInterception(){
   const share=$('shareWhatsApp');
   if(!share||share.dataset.nativeShare) return;
   share.dataset.nativeShare='1';
-  share.textContent='Partager';
+  share.textContent='Partager sur WhatsApp';
   share.addEventListener('click',async ev=>{
     ev.preventDefault();ev.stopImmediatePropagation();
     const e=await nextEvent();
@@ -180,12 +180,16 @@ function wireDelete(){
   b.dataset.wired='1';
   b.onclick=async()=>{
     const id=teamId();if(!id)return alert('Aucune équipe sélectionnée.');
-    if(prompt(`Tape SUPPRIMER pour supprimer définitivement « ${teamName()} » et toutes ses données.`)!=='SUPPRIMER')return;
-    if(!confirm('Dernière confirmation : cette action est définitive. Supprimer toute l’équipe ?'))return;
+    const ps=await getPlayers();
+    if(!ps.length)return alert('La liste des joueurs est déjà vide.');
+    if(prompt(`Tu vas supprimer les ${ps.length} joueur(s) de « ${teamName()} ». La section ${teamName()} restera en place.\n\nTape SUPPRIMER pour confirmer.`)!=='SUPPRIMER')return;
+    if(!confirm('Dernière confirmation : supprimer uniquement tous les joueurs de cette liste ?'))return;
     b.disabled=true;b.textContent='Suppression…';
-    const{error}=await supabase.from('teams').delete().eq('id',id);
-    if(error){b.disabled=false;b.textContent='Supprimer toute l’équipe';alert(`Suppression impossible : ${error.message}`);return;}
-    sessionStorage.removeItem('flemicoach-team');location.reload();
+    const{error}=await supabase.from('players').delete().eq('team_id',id);
+    if(error){b.disabled=false;b.textContent='Supprimer tous les joueurs';alert(`Suppression impossible : ${error.message}`);return;}
+    b.disabled=false;b.textContent='Supprimer tous les joueurs';
+    alert('Liste des joueurs supprimée. La section équipe est conservée.');
+    location.reload();
   };
 }
 
