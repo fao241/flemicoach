@@ -1,194 +1,21 @@
 <!doctype html>
 <html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#111827" />
-  <meta name="description" content="FlemiCoach — suivi simple des présences pour éducateurs de football." />
-  <title>FlemiCoach</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#111827"><meta name="description" content="FlemiCoach — suivi simple des présences pour éducateurs de football."><title>FlemiCoach</title><link rel="stylesheet" href="styles.css"></head>
 <body>
-  <div id="boot" class="center-screen"><div class="loader"></div><p>Chargement de FlemiCoach…</p></div>
-
-  <section id="configError" class="center-screen hidden">
-    <div class="auth-card">
-      <div class="brand">FlemiCoach</div>
-      <h1>Configuration Supabase requise</h1>
-      <p class="muted">Copie <code>config.example.js</code> vers <code>config.js</code>, puis renseigne l’URL et la clé publishable de ton projet Supabase.</p>
-    </div>
-  </section>
-
-  <section id="authScreen" class="center-screen hidden">
-    <div class="auth-card">
-      <div class="brand">FlemiCoach</div>
-      <h1>Gère les présences sans prise de tête.</h1>
-      <p class="muted">Planning, réponses parents, présence réelle et statistiques de saison.</p>
-      <div class="auth-tabs">
-        <button class="auth-tab active" data-auth-tab="login">Connexion</button>
-        <button class="auth-tab" data-auth-tab="signup">Créer un compte</button>
-      </div>
-      <form id="loginForm" class="form-stack">
-        <label class="field"><span>Email</span><input id="loginEmail" type="email" autocomplete="email" required /></label>
-        <label class="field"><span>Mot de passe</span><input id="loginPassword" type="password" autocomplete="current-password" minlength="8" required /></label>
-        <button class="btn primary full" type="submit">Se connecter</button>
-      </form>
-      <form id="signupForm" class="form-stack hidden">
-        <label class="field"><span>Nom</span><input id="signupName" autocomplete="name" required /></label>
-        <label class="field"><span>Email</span><input id="signupEmail" type="email" autocomplete="email" required /></label>
-        <label class="field"><span>Mot de passe</span><input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required /></label>
-        <button class="btn primary full" type="submit">Créer mon compte</button>
-      </form>
-      <div id="authFeedback" class="status-line small"></div>
-    </div>
-  </section>
-
-  <section id="publicScreen" class="center-screen hidden">
-    <div class="public-card">
-      <div class="brand">FlemiCoach</div>
-      <div id="publicLoading">Chargement de la séance…</div>
-      <div id="publicContent" class="hidden">
-        <div class="eyebrow" id="publicTeam"></div>
-        <h1 id="publicTitle"></h1>
-        <div id="publicMeta" class="muted"></div>
-        <form id="publicForm" class="form-stack top-gap">
-          <label class="field"><span>Votre enfant</span><select id="publicPlayer" required></select></label>
-          <fieldset class="choice-box">
-            <legend>Sera-t-il présent ?</legend>
-            <label class="choice"><input type="radio" name="publicStatus" value="PRESENT" required /> <span>✅ Présent</span></label>
-            <label class="choice"><input type="radio" name="publicStatus" value="ABSENT" required /> <span>❌ Absent</span></label>
-          </fieldset>
-          <label class="field"><span>Commentaire <small class="muted">(facultatif)</small></span><textarea id="publicNote" maxlength="500" rows="3"></textarea></label>
-          <button class="btn primary full" type="submit">Confirmer</button>
-        </form>
-        <div id="publicFeedback" class="status-line"></div>
-      </div>
-    </div>
-  </section>
-
-  <section id="onboardingScreen" class="center-screen hidden">
-    <div class="auth-card wide">
-      <div class="brand">FlemiCoach</div>
-      <h1>Créer ton équipe</h1>
-      <p class="muted">Tu peux ensuite importer les joueurs et le calendrier.</p>
-      <form id="onboardingForm" class="form-stack">
-        <label class="field"><span>Nom de l’équipe</span><input id="onboardTeamName" value="U13" required /></label>
-        <div class="grid two">
-          <label class="field"><span>Début de saison</span><input id="onboardStart" type="date" required /></label>
-          <label class="field"><span>Fin de saison</span><input id="onboardEnd" type="date" required /></label>
-        </div>
-        <h3>Entraînements récurrents</h3>
-        <div id="onboardRules" class="stack"></div>
-        <button id="onboardAddRule" class="btn ghost" type="button">+ Ajouter un créneau</button>
-        <button class="btn primary full" type="submit">Créer l’équipe</button>
-      </form>
-      <div id="onboardFeedback" class="status-line"></div>
-    </div>
-  </section>
-
-  <div id="app" class="app-shell hidden">
-    <header class="topbar">
-      <div class="minw0">
-        <div class="eyebrow">FlemiCoach</div>
-        <h1 id="teamTitle">Équipe</h1>
-      </div>
-      <div class="header-actions">
-        <select id="teamSelect" aria-label="Changer d’équipe"></select>
-        <button id="newTeamBtn" class="btn ghost">+ Équipe</button>
-        <button id="openSettings" class="btn ghost">Paramètres</button>
-        <button id="logoutBtn" class="btn ghost">Déconnexion</button>
-      </div>
-    </header>
-
-    <nav class="tabs" aria-label="Navigation principale">
-      <button class="tab active" data-view="dashboard">Accueil</button>
-      <button class="tab" data-view="calendar">Calendrier</button>
-      <button class="tab" data-view="players">Joueurs</button>
-      <button class="tab" data-view="attendance">Présences</button>
-      <button class="tab" data-view="import">Importer</button>
-    </nav>
-
-    <main>
-      <section id="dashboard" class="view active-view">
-        <div class="card hero-card">
-          <div class="row between start gap wrap">
-            <div><div class="muted small">Prochain événement</div><h2 id="nextEventTitle">—</h2><div id="nextEventMeta" class="muted">—</div></div>
-            <span id="nextEventBadge" class="pill">—</span>
-          </div>
-          <div class="stats-grid three">
-            <div class="stat"><strong id="nextPresent">0</strong><span>Présents</span></div>
-            <div class="stat"><strong id="nextAbsent">0</strong><span>Absents</span></div>
-            <div class="stat"><strong id="nextNoReply">0</strong><span>Sans réponse</span></div>
-          </div>
-          <div class="grid two top-gap-sm">
-            <button id="shareWhatsApp" class="btn primary full">Partager sur WhatsApp</button>
-            <button id="copyParentLink" class="btn full">Copier le lien</button>
-          </div>
-          <div id="shareFeedback" class="muted small status-line"></div>
-        </div>
-
-        <section>
-          <div class="section-head"><div><h2>Saison en chiffres</h2><div class="muted small">Événements passés et validés</div></div></div>
-          <div class="stats-grid four">
-            <div class="card stat"><strong id="teamPresenceRate">0 %</strong><span>Présence réelle</span></div>
-            <div class="card stat"><strong id="teamResponseRate">0 %</strong><span>Taux de réponse</span></div>
-            <div class="card stat"><strong id="trainingCount">0</strong><span>Entraînements</span></div>
-            <div class="card stat"><strong id="matchCount">0</strong><span>Matchs</span></div>
-          </div>
-        </section>
-        <section><div class="section-head"><h2>Prochains événements</h2></div><div id="upcomingList" class="list card"></div></section>
-      </section>
-
-      <section id="calendar" class="view">
-        <div class="section-head row between gap wrap"><div><h2>Calendrier</h2><div class="muted small">Entraînements récurrents, matchs et événements.</div></div><button id="addEventBtn" class="btn primary">+ Événement</button></div>
-        <div class="filters"><button class="filter active" data-filter="all">Tous</button><button class="filter" data-filter="training">Entraînements</button><button class="filter" data-filter="match">Matchs</button></div>
-        <div id="calendarList" class="stack"></div>
-      </section>
-
-      <section id="players" class="view">
-        <div class="section-head row between gap wrap"><div><h2>Joueurs</h2><div class="muted small"><span id="playerCount">0</span> joueur(s)</div></div><button id="addPlayerBtn" class="btn primary">+ Ajouter</button></div>
-        <div class="player-head stats-grid three compact-labels"><span>Présence</span><span>Réponse</span><span>Fiabilité</span></div>
-        <div id="playersList" class="list card"></div>
-        <div id="playerDetail" class="card detail-card hidden"><div class="row between start gap"><div><h3 id="detailName">Joueur</h3><div class="muted small">Statistiques saison</div></div><button id="closePlayerDetail" class="btn ghost small-btn">Fermer</button></div><div class="stats-grid three"><div class="stat"><strong id="detailPresence">0 %</strong><span>Présence réelle</span></div><div class="stat"><strong id="detailResponse">0 %</strong><span>Réponse</span></div><div class="stat"><strong id="detailReliability">0 %</strong><span>Fiabilité</span></div></div><div id="detailCounts" class="muted small"></div></div>
-      </section>
-
-      <section id="attendance" class="view">
-        <div class="section-head"><h2>Validation des présences</h2><div class="muted small">Les réponses annoncées servent de pré-remplissage ; corrige les exceptions.</div></div>
-        <label class="field"><span>Événement</span><select id="attendanceEventSelect"></select></label>
-        <div id="attendanceList" class="list card top-gap-sm"></div>
-        <button id="saveAttendance" class="btn primary full top-gap-sm">Valider les présences réelles</button>
-        <div id="attendanceFeedback" class="muted small status-line"></div>
-      </section>
-
-      <section id="import" class="view">
-        <div class="section-head"><h2>Importer</h2><div class="muted small">Joueurs ou calendrier. Aperçu avant validation.</div></div>
-        <div class="card form-card">
-          <label class="field"><span>Type d’import</span><select id="importType"><option value="players">Liste de joueurs</option><option value="calendar">Calendrier de matchs</option></select></label>
-          <label class="field"><span>Fichier</span><input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.pdf" /></label>
-          <div class="muted small">CSV, XLSX/XLS, PDF texte. Google Sheets : télécharger en XLSX ou CSV.</div>
-          <div id="importStatus" class="small status-line"></div>
-        </div>
-        <div id="importPreview" class="card hidden top-gap-sm"><div class="row between gap wrap"><div><h3>Aperçu détecté</h3><div id="previewMeta" class="muted small"></div></div><span id="previewCount" class="pill">0</span></div><div id="previewRows" class="preview-list"></div><button id="confirmImport" class="btn primary full">Valider l’import</button></div>
-      </section>
-
-      <section id="settings" class="view">
-        <div class="section-head row between gap wrap"><div><h2>Paramètres équipe</h2><div class="muted small">Configuration de la saison et rappels.</div></div><button id="closeSettings" class="btn ghost">Retour</button></div>
-        <form id="settingsForm" class="card form-card">
-          <label class="field"><span>Nom de l’équipe</span><input id="teamName" required /></label>
-          <div class="grid two"><label class="field"><span>Début de saison</span><input id="seasonStart" type="date" required /></label><label class="field"><span>Fin de saison</span><input id="seasonEnd" type="date" required /></label></div>
-          <div class="field"><span>Entraînements récurrents</span><div id="trainingRules" class="stack"></div><button id="addTrainingRule" type="button" class="btn ghost">+ Ajouter un créneau</button></div>
-          <label class="check"><input id="emailReminders" type="checkbox" /> Activer les rappels éducateur par email</label>
-          <div class="grid two"><label class="field"><span>Entraînement : rappel avant</span><select id="trainingReminderHours"><option value="12">12 h</option><option value="24">24 h</option><option value="48">48 h</option></select></label><label class="field"><span>Match : rappel avant</span><select id="matchReminderHours"><option value="24">24 h</option><option value="48">48 h</option><option value="72">72 h</option></select></label></div>
-          <button class="btn primary full" type="submit">Enregistrer et régénérer le planning</button>
-          <div id="settingsFeedback" class="muted small status-line"></div>
-        </form>
-      </section>
-    </main>
-  </div>
-
-  <dialog id="playerDialog" class="modal"><form method="dialog" id="playerForm" class="modal-box"><h3>Ajouter un joueur</h3><label class="field"><span>Prénom et nom</span><input id="newPlayerName" required /></label><div class="row end gap"><button value="cancel" class="btn ghost">Annuler</button><button id="confirmAddPlayer" value="default" class="btn primary">Ajouter</button></div></form></dialog>
-  <dialog id="eventDialog" class="modal"><form method="dialog" id="eventForm" class="modal-box"><h3>Ajouter un événement</h3><label class="field"><span>Type</span><select id="eventType"><option value="match">Match</option><option value="training">Entraînement</option><option value="event">Autre</option></select></label><label class="field"><span>Titre / adversaire</span><input id="eventTitle" placeholder="Ex. Wasquehal" required /></label><div class="grid two"><label class="field"><span>Date</span><input id="eventDate" type="date" required /></label><label class="field"><span>Heure</span><input id="eventTime" type="time" required /></label></div><label class="field"><span>Lieu</span><input id="eventLocation" placeholder="Ex. Stade municipal" /></label><div class="row end gap"><button value="cancel" class="btn ghost">Annuler</button><button id="confirmAddEvent" value="default" class="btn primary">Ajouter</button></div></form></dialog>
-
-  <script type="module" src="app.js"></script>
-</body>
-</html>
+<div id="boot" class="center-screen"><div class="loader"></div><p>Chargement de FlemiCoach…</p></div>
+<section id="configError" class="center-screen hidden"><div class="auth-card"><div class="brand">FlemiCoach</div><h1>Configuration Supabase requise</h1><p class="muted">Configuration de la base requise.</p></div></section>
+<section id="authScreen" class="center-screen hidden"><div class="auth-card"><div class="brand">FlemiCoach</div><h1>Gère les présences sans prise de tête.</h1><p class="muted">Planning, réponses parents, présence réelle et statistiques de saison.</p><div class="auth-tabs"><button class="auth-tab active" data-auth-tab="login">Connexion</button><button class="auth-tab" data-auth-tab="signup">Créer un compte</button></div><form id="loginForm" class="form-stack"><label class="field"><span>Email</span><input id="loginEmail" type="email" autocomplete="email" required></label><label class="field"><span>Mot de passe</span><input id="loginPassword" type="password" autocomplete="current-password" minlength="8" required></label><button class="btn primary full" type="submit">Se connecter</button></form><form id="signupForm" class="form-stack hidden"><label class="field"><span>Nom</span><input id="signupName" autocomplete="name" required></label><label class="field"><span>Email</span><input id="signupEmail" type="email" autocomplete="email" required></label><label class="field"><span>Mot de passe</span><input id="signupPassword" type="password" autocomplete="new-password" minlength="8" required></label><button class="btn primary full" type="submit">Créer mon compte</button></form><div id="authFeedback" class="status-line small"></div></div></section>
+<section id="publicScreen" class="center-screen hidden"><div class="public-card"><div class="brand">FlemiCoach</div><div id="publicLoading">Chargement de la séance…</div><div id="publicContent" class="hidden"><div class="eyebrow" id="publicTeam"></div><h1 id="publicTitle"></h1><div id="publicMeta" class="muted"></div><form id="publicForm" class="form-stack top-gap"><label class="field"><span>Votre enfant</span><select id="publicPlayer" required></select></label><fieldset class="choice-box"><legend>Sera-t-il présent ?</legend><label class="choice"><input type="radio" name="publicStatus" value="PRESENT" required> <span>✅ Présent</span></label><label class="choice"><input type="radio" name="publicStatus" value="ABSENT" required> <span>❌ Absent</span></label></fieldset><label class="field"><span>Commentaire <small class="muted">(facultatif)</small></span><textarea id="publicNote" maxlength="500" rows="3"></textarea></label><button class="btn primary full" type="submit">Confirmer</button></form><div id="publicFeedback" class="status-line"></div></div></div></section>
+<section id="onboardingScreen" class="center-screen hidden"><div class="auth-card wide"><div class="brand">FlemiCoach</div><h1>Créer ton équipe</h1><p class="muted">Tu peux ensuite importer les joueurs et le calendrier.</p><form id="onboardingForm" class="form-stack"><label class="field"><span>Nom de l’équipe</span><input id="onboardTeamName" value="U13" required></label><div class="grid two"><label class="field"><span>Début de saison</span><input id="onboardStart" type="date" required></label><label class="field"><span>Fin de saison</span><input id="onboardEnd" type="date" required></label></div><h3>Entraînements récurrents</h3><div id="onboardRules" class="stack"></div><button id="onboardAddRule" class="btn ghost" type="button">+ Ajouter un créneau</button><button class="btn primary full" type="submit">Créer l’équipe</button></form><div id="onboardFeedback" class="status-line"></div></div></section>
+<div id="app" class="app-shell hidden"><header class="topbar"><div class="minw0"><div class="eyebrow">FlemiCoach</div><h1 id="teamTitle">Équipe</h1></div><div class="header-actions"><select id="teamSelect" aria-label="Changer d’équipe"></select><button id="newTeamBtn" class="btn ghost">+ Équipe</button><button id="openSettings" class="btn ghost">Paramètres</button><button id="logoutBtn" class="btn ghost">Déconnexion</button></div></header><nav class="tabs"><button class="tab active" data-view="dashboard">Accueil</button><button class="tab" data-view="calendar">Calendrier</button><button class="tab" data-view="players">Joueurs</button><button class="tab" data-view="attendance">Présences</button><button class="tab" data-view="import">Importer</button></nav><main>
+<section id="dashboard" class="view active-view"><div class="card hero-card"><div class="row between start gap wrap"><div><div class="muted small">Prochain événement</div><h2 id="nextEventTitle">—</h2><div id="nextEventMeta" class="muted">—</div></div><span id="nextEventBadge" class="pill">—</span></div><div class="stats-grid three"><div class="stat"><strong id="nextPresent">0</strong><span>Présents</span></div><div class="stat"><strong id="nextAbsent">0</strong><span>Absents</span></div><div class="stat"><strong id="nextNoReply">0</strong><span>Sans réponse</span></div></div><div class="grid two top-gap-sm"><button id="shareWhatsApp" class="btn primary full">Partager sur WhatsApp</button><button id="copyParentLink" class="btn full">Copier le lien</button></div><div id="shareFeedback" class="muted small status-line"></div></div><section><div class="section-head"><div><h2>Saison en chiffres</h2><div class="muted small">Événements passés et validés</div></div></div><div class="stats-grid four"><div class="card stat"><strong id="teamPresenceRate">0 %</strong><span>Présence réelle</span></div><div class="card stat"><strong id="teamResponseRate">0 %</strong><span>Taux de réponse</span></div><div class="card stat"><strong id="trainingCount">0</strong><span>Entraînements</span></div><div class="card stat"><strong id="matchCount">0</strong><span>Matchs</span></div></div></section><section><div class="section-head"><h2>Prochains événements</h2></div><div id="upcomingList" class="list card"></div></section></section>
+<section id="calendar" class="view"><div class="section-head row between gap wrap"><div><h2>Calendrier</h2><div class="muted small">Entraînements récurrents, matchs et événements.</div></div><button id="addEventBtn" class="btn primary">+ Événement</button></div><div class="filters"><button class="filter active" data-filter="all">Tous</button><button class="filter" data-filter="training">Entraînements</button><button class="filter" data-filter="match">Matchs</button></div><div id="calendarList" class="stack"></div></section>
+<section id="players" class="view"><div class="section-head row between gap wrap"><div><h2>Joueurs</h2><div class="muted small"><span id="playerCount">0</span> joueur(s)</div></div><button id="addPlayerBtn" class="btn primary">+ Ajouter</button></div><div class="player-head stats-grid three compact-labels"><span>Présence</span><span>Réponse</span><span>Fiabilité</span></div><div id="playersList" class="list card"></div><div id="playerDetail" class="card detail-card hidden"><div class="row between start gap"><div><h3 id="detailName">Joueur</h3><div class="muted small">Statistiques saison</div></div><button id="closePlayerDetail" class="btn ghost small-btn">Fermer</button></div><div class="stats-grid three"><div class="stat"><strong id="detailPresence">0 %</strong><span>Présence réelle</span></div><div class="stat"><strong id="detailResponse">0 %</strong><span>Réponse</span></div><div class="stat"><strong id="detailReliability">0 %</strong><span>Fiabilité</span></div></div><div id="detailCounts" class="muted small"></div></div></section>
+<section id="attendance" class="view"><div class="section-head"><h2>Validation des présences</h2><div class="muted small">Les réponses annoncées servent de pré-remplissage ; corrige les exceptions.</div></div><label class="field"><span>Événement</span><select id="attendanceEventSelect"></select></label><div id="attendanceList" class="list card top-gap-sm"></div><button id="saveAttendance" class="btn primary full top-gap-sm">Valider les présences réelles</button><div id="attendanceFeedback" class="muted small status-line"></div></section>
+<section id="import" class="view"><div class="section-head"><h2>Importer</h2><div class="muted small">Joueurs ou calendrier. Aperçu avant validation.</div></div><div class="card form-card"><label class="field"><span>Type d’import</span><select id="importType"><option value="players">Liste de joueurs</option><option value="calendar">Calendrier de matchs</option></select></label><label class="field"><span>Fichier</span><input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.pdf"></label><div class="muted small">CSV, XLSX/XLS, PDF texte. Les listes de licenciés FFF récupèrent automatiquement nom, licence et date de naissance.</div><div id="importStatus" class="small status-line"></div></div><div id="importPreview" class="card hidden top-gap-sm"><div class="row between gap wrap"><div><h3>Aperçu détecté</h3><div id="previewMeta" class="muted small"></div></div><span id="previewCount" class="pill">0</span></div><div id="previewRows" class="preview-list"></div><button id="confirmImport" class="btn primary full">Valider l’import</button></div></section>
+<section id="settings" class="view"><div class="section-head row between gap wrap"><div><h2>Paramètres équipe</h2><div class="muted small">Configuration de la saison et rappels.</div></div><button id="closeSettings" class="btn ghost">Retour</button></div><form id="settingsForm" class="card form-card"><label class="field"><span>Nom de l’équipe</span><input id="teamName" required></label><div class="grid two"><label class="field"><span>Début de saison</span><input id="seasonStart" type="date" required></label><label class="field"><span>Fin de saison</span><input id="seasonEnd" type="date" required></label></div><div class="field"><span>Entraînements récurrents</span><div id="trainingRules" class="stack"></div><button id="addTrainingRule" type="button" class="btn ghost">+ Ajouter un créneau</button></div><label class="check"><input id="emailReminders" type="checkbox"> Activer les rappels éducateur par email</label><div class="grid two"><label class="field"><span>Entraînement : rappel avant</span><select id="trainingReminderHours"><option value="12">12 h</option><option value="24">24 h</option><option value="48">48 h</option></select></label><label class="field"><span>Match : rappel avant</span><select id="matchReminderHours"><option value="24">24 h</option><option value="48">48 h</option><option value="72">72 h</option></select></label></div><button class="btn primary full" type="submit">Enregistrer et régénérer le planning</button><div id="settingsFeedback" class="muted small status-line"></div></form></section>
+</main></div>
+<dialog id="playerDialog" class="modal"><form method="dialog" id="playerForm" class="modal-box"><h3>Ajouter un joueur</h3><label class="field"><span>Prénom et nom</span><input id="newPlayerName" required></label><div class="row end gap"><button value="cancel" class="btn ghost">Annuler</button><button id="confirmAddPlayer" value="default" class="btn primary">Ajouter</button></div></form></dialog>
+<dialog id="eventDialog" class="modal"><form method="dialog" id="eventForm" class="modal-box"><h3>Ajouter un événement</h3><label class="field"><span>Type</span><select id="eventType"><option value="match">Match</option><option value="training">Entraînement</option><option value="event">Autre</option></select></label><label class="field"><span>Titre / adversaire</span><input id="eventTitle" placeholder="Ex. Wasquehal" required></label><div class="grid two"><label class="field"><span>Date</span><input id="eventDate" type="date" required></label><label class="field"><span>Heure</span><input id="eventTime" type="time" required></label></div><label class="field"><span>Lieu</span><input id="eventLocation" placeholder="Ex. Stade municipal"></label><div class="row end gap"><button value="cancel" class="btn ghost">Annuler</button><button id="confirmAddEvent" value="default" class="btn primary">Ajouter</button></div></form></dialog>
+<script type="module" src="app.js"></script><script type="module" src="enhancements.js"></script>
+</body></html>
