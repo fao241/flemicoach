@@ -21,6 +21,9 @@ function pickName(v: any): string {
   if (typeof v === 'string') return v;
   return String(v.name || v.short_name || v.shortName || v.nom || v.cl_name || v.label || v.libelle || '').trim();
 }
+function normName(v: any): string {
+  return String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
+}
 function pickId(v: any): string {
   if (!v) return '';
   if (typeof v === 'number' || typeof v === 'string') return String(v);
@@ -32,7 +35,7 @@ async function fffFetch(path: string) {
   const res = await fetch(`${FFF_BASE}${path}`, {
     headers: {
       'Accept': 'application/json, application/ld+json;q=0.9, */*;q=0.1',
-      'User-Agent': 'FlemiCoach/1.1 calendar-sync',
+      'User-Agent': 'FlemiCoach/1.2 calendar-sync',
     },
   });
   const text = await res.text();
@@ -63,13 +66,14 @@ function simplifyTeams(payload: any) {
     engagements.forEach((engagement: any, ei: number) => {
       const competition = engagement?.competition || {};
       const poule = engagement?.poule || {};
-      const category = String(team.category_code || team.category?.code || team.category?.name || team.name || '').trim();
+      const category = String(team.category_code || team.category?.code || team.category?.name || '').trim();
       const number = Number(team.number ?? team.numero ?? 1) || 1;
       const compName = pickName(competition);
-      const label = [category || pickName(team) || 'Équipe', number > 1 ? `${number}` : '', compName ? `— ${compName}` : ''].filter(Boolean).join(' ');
+      const fffName = pickName(team);
+      const label = [category || fffName || 'Équipe', number > 1 ? `${number}` : '', compName ? `— ${compName}` : ''].filter(Boolean).join(' ');
       out.push({
         key: teamKey(team, engagement, ti * 100 + ei),
-        label, category, number,
+        label, category, number, fff_name: fffName,
         season: team.season || engagement?.season || null,
         competition_id: Number(competition.cp_no ?? competition.id) || null,
         competition_name: compName,
@@ -106,6 +110,9 @@ function side(o:any, home:boolean) {
 function sideClubId(v:any): string { return v ? (pickId(v.club || v.club_entity || v) || pickId(v)) : ''; }
 function sameSelectedTeam(v:any, selected:any): boolean {
   if (!v || !selected) return false;
+  const sideName = normName(pickName(v));
+  const selectedName = normName(selected.fff_name || selected.team_name || '');
+  if (sideName && selectedName && sideName === selectedName) return true;
   const category = String(v.category_code || v.category?.code || v.category?.name || '').trim().toUpperCase();
   const number = Number(v.number ?? v.numero ?? 0) || 0;
   const wantedCategory = String(selected.category || '').trim().toUpperCase();
@@ -114,7 +121,7 @@ function sameSelectedTeam(v:any, selected:any): boolean {
 }
 function extractMatches(payload:any, clubId:number, clubName:string, selected:any) {
   const wantedClubId = String(clubId);
-  const wantedName = clubName.trim().toLowerCase();
+  const wantedName = normName(clubName);
   const result:any[] = [];
   for (const o of collectObjects(payload)) {
     const homeObj = side(o,true), awayObj = side(o,false);
@@ -124,13 +131,15 @@ function extractMatches(payload:any, clubId:number, clubName:string, selected:an
     if (!date) continue;
     const homeId = sideClubId(homeObj), awayId = sideClubId(awayObj);
     const byId = homeId === wantedClubId || awayId === wantedClubId;
-    const bySelected = sameSelectedTeam(homeObj, selected) || sameSelectedTeam(awayObj, selected);
-    const byName = wantedName && (home.toLowerCase().includes(wantedName) || away.toLowerCase().includes(wantedName));
+    const homeSelected = sameSelectedTeam(homeObj, selected);
+    const awaySelected = sameSelectedTeam(awayObj, selected);
+    const bySelected = homeSelected || awaySelected;
+    const byName = wantedName && (normName(home) === wantedName || normName(away) === wantedName);
     if (!byId && !bySelected && !byName) continue;
 
     const rawId = firstValue(o,['ma_no','match_id','id','numero','number','@id']);
     const stableId = rawId ? String(rawId).split('/').filter(Boolean).pop()! : `${date}:${home}:${away}`;
-    const isHome = homeId === wantedClubId || sameSelectedTeam(homeObj, selected) || (!homeId && !awayId && home.toLowerCase().includes(wantedName));
+    const isHome = homeId === wantedClubId || homeSelected || (!homeId && !awayId && normName(home) === wantedName);
     const opponent = isHome ? away : home;
     const venueObj = firstValue(o,['terrain','stadium','venue','ground','installation','lieu','location']);
     const rawTime = firstValue(o,['time','hour','heure','kickoff','start_time','datetime','date_time','scheduled_at']);
@@ -150,8 +159,7 @@ async function fullSchedule(competitionId:number, phase:number, poule:number) {
   return fffFetch(`/api/compets/${competitionId}/phases/${phase}/poules/${poule}/poule_journees?details[]=pouleJourneeWithMatch`);
 }
 async function resolveSelectedTeam(clubId:number, competitionId:number, phase:number, poule:number) {
-  const payload = await fffFetch(`/api/clubs/${clubId}/equipes.json?filter=`);
-  const teams = simplifyTeams(payload);
+  const teams = simplifyTeams(await fffFetch(`/api/clubs/${clubId}/equipes.json?filter=`));
   return teams.find((t:any)=>Number(t.competition_id)===competitionId && Number(t.phase||1)===phase && Number(t.poule||1)===poule)
     || teams.find((t:any)=>Number(t.competition_id)===competitionId)
     || null;
@@ -196,9 +204,10 @@ Deno.serve(async (req) => {
     }
     if (body.action === 'sync') {
       const teamId=String(body.team_id||''), clubId=Number(body.club_id), clubName=String(body.club_name||'').trim();
-      const selected=body.fff_team||{}, competitionId=Number(selected.competition_id), phase=Number(selected.phase||1), poule=Number(selected.poule||1);
+      let selected=body.fff_team||{}, competitionId=Number(selected.competition_id), phase=Number(selected.phase||1), poule=Number(selected.poule||1);
       if (!teamId || !clubId || !competitionId) return json({error:'Données de synchronisation incomplètes.'},400);
       const { data:teamRow } = await db.from('teams').select('id').eq('id',teamId).maybeSingle(); if (!teamRow) return json({error:'Équipe inaccessible.'},403);
+      if (!selected.fff_name) selected = await resolveSelectedTeam(clubId,competitionId,phase,poule) || selected;
       const matches = extractMatches(await fullSchedule(competitionId,phase,poule),clubId,clubName,selected);
       if (!matches.length) return json({error:'Aucun match de cette équipe n’a pu être identifié dans le calendrier FFF. Aucune donnée n’a été importée.'},422);
       const counts = await upsertMatches(db,userData.user.id,teamId,matches);
