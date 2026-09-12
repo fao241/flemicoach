@@ -16,8 +16,7 @@ alter table public.events
   add column if not exists source_payload jsonb;
 
 create unique index if not exists events_team_source_event_uidx
-  on public.events(team_id, source, source_event_id)
-  where source is not null and source_event_id is not null;
+  on public.events(team_id, source, source_event_id);
 
 create index if not exists teams_fff_club_id_idx on public.teams(fff_club_id);
 
