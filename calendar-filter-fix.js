@@ -1,3 +1,5 @@
+import './fff-sync.js';
+
 const $=id=>document.getElementById(id);
 
 function currentFilter(){
