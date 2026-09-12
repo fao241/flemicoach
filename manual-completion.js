@@ -34,14 +34,25 @@ function addFinishButton(actions,e){
 
 function wireMatchCallupCards(list){
   const box=$('matchActions'); if(!box)return;
-  box.querySelectorAll('.card').forEach(card=>{
+  box.querySelectorAll('.match-action-card,.card').forEach(card=>{
     const text=norm(card.textContent);
-    const e=list.find(x=>x.type==='match'&&!x.completed&&!x.cancelled&&text.includes(norm(x.title)));
-    if(!e)return;
+    const match=list.find(x=>x.type==='match'&&text.includes(norm(x.title)));
+    if(!match)return;
+    if(match.completed||match.cancelled){
+      card.remove();
+      return;
+    }
     const buttons=[...card.querySelectorAll('button')];
     const actions=buttons.find(b=>/whatsapp/i.test(b.textContent))?.parentElement || buttons[0]?.parentElement;
-    addFinishButton(actions,e);
+    addFinishButton(actions,match);
   });
+  const remaining=box.querySelectorAll('.match-action-card,.card').length;
+  if(!remaining){
+    box.innerHTML='';
+    box.style.display='none';
+  }else{
+    box.style.display='';
+  }
 }
 
 async function syncCalendar(){
