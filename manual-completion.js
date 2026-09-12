@@ -1,4 +1,5 @@
 import './analytics.js';
+import './onboarding-fff.js';
 import { supabase } from './supabase.js';
 const $=id=>document.getElementById(id);
 const teamId=()=>$('teamSelect')?.value||null;
