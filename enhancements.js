@@ -29,13 +29,14 @@ async function getCallups(eventId){
 }
 async function getMatches(){
   if(!teamId()) return [];
-  const {data,error}=await supabase.from('events').select('*').eq('team_id',teamId()).eq('type','match').order('event_date').order('start_time');
+  const {data,error}=await supabase.from('events').select('*').eq('team_id',teamId()).eq('type','match').eq('cancelled',false).eq('completed',false).order('event_date').order('start_time');
   if(error) throw error;
   return data || [];
 }
 async function nextEvent(){
   const today=new Date().toISOString().slice(0,10);
-  const {data}=await supabase.from('events').select('*').eq('team_id',teamId()).gte('event_date',today).order('event_date').order('start_time').limit(1);
+  const {data,error}=await supabase.from('events').select('*').eq('team_id',teamId()).eq('cancelled',false).eq('completed',false).gte('event_date',today).order('event_date').order('start_time').limit(1);
+  if(error) throw error;
   return data?.[0] || null;
 }
 
@@ -105,7 +106,7 @@ function ensureCallupDialog(){
 }
 async function openCallups(id){
   ensureCallupDialog();
-  const {data:e,error}=await supabase.from('events').select('*').eq('id',id).single();
+  const {data:e,error}=await supabase.from('events').select('*').eq('id',id).eq('cancelled',false).eq('completed',false).single();
   if(error||!e) return;
   selectedMatch=e;
   const ps=await getPlayers(), sel=await getCallups(id);
@@ -117,6 +118,8 @@ async function openCallups(id){
 }
 async function saveCallups(){
   if(!selectedMatch) return;
+  const {data:current}=await supabase.from('events').select('completed,cancelled').eq('id',selectedMatch.id).single();
+  if(current?.completed||current?.cancelled){$('callupDialog')?.close();await renderMatchActions();return alert('Ce match est terminé ou annulé. La convocation est fermée.');}
   const ids=[...$('callupPlayers').querySelectorAll('input:checked')].map(x=>x.value);
   const f=$('callupFeedback');
   const {error:delError}=await supabase.from('match_callups').delete().eq('event_id',selectedMatch.id);
@@ -132,8 +135,9 @@ async function saveCallups(){
 async function renderMatchActions(){
   const box=$('matchActions');
   if(!box||!teamId()) return;
-  const ms=await getMatches(), today=new Date().toISOString().slice(0,10), future=ms.filter(e=>e.event_date>=today);
-  if(!future.length){box.innerHTML='';return;}
+  const ms=await getMatches(), today=new Date().toISOString().slice(0,10), future=ms.filter(e=>e.event_date>=today&&!e.completed&&!e.cancelled);
+  if(!future.length){box.innerHTML='';box.style.display='none';return;}
+  box.style.display='';
   const rows=[];
   for(const e of future){
     const ids=await getCallups(e.id);
