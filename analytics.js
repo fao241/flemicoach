@@ -1,3 +1,4 @@
+import './feedback.js';
 import { supabase } from './supabase.js';
 
 const KEY='flemicoach_analytics_id';
