@@ -141,6 +141,39 @@ async function syncAll(){
   await Promise.allSettled([syncCalendar(),syncDashboard()]);
 }
 
+function enhanceLanding(){
+  const shell=document.querySelector('#authScreen .landing-shell');
+  const grid=document.querySelector('#authScreen .landing-grid');
+  if(!shell||!grid||$('landingStory'))return;
+
+  const style=document.createElement('style');
+  style.textContent=`
+    .landing-story{margin-top:56px;padding-top:44px;border-top:1px solid #dfe7e2}.landing-story-intro{text-align:center;max-width:780px;margin:0 auto 30px}.landing-story-intro h2{font-size:clamp(1.7rem,3vw,2.45rem);letter-spacing:-.045em;margin:0 0 10px}.landing-story-intro p{color:#66736c;line-height:1.65;margin:0}.landing-pain{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:28px 0}.landing-story-card{background:rgba(255,255,255,.82);border:1px solid #dfe7e2;border-radius:18px;padding:24px;box-shadow:0 10px 30px rgba(20,50,30,.04)}.landing-story-card h3{margin:0 0 10px;font-size:1.08rem}.landing-story-card p{margin:0;color:#657169;line-height:1.6}.landing-story-card strong{color:#173f28}.landing-season{margin-top:18px;padding:28px;border-radius:20px;background:#173f28;color:#fff;text-align:center}.landing-season h2{margin:0 0 12px;font-size:clamp(1.45rem,2.7vw,2.1rem);letter-spacing:-.035em}.landing-season p{margin:0 auto;max-width:820px;color:#dce8df;line-height:1.7}.landing-season-line{margin-top:18px!important;color:#fff!important;font-weight:850;font-size:1.03rem}.landing-simple{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}.landing-simple ul{margin:12px 0 0;padding-left:20px;color:#657169;line-height:1.8}.landing-simple li::marker{color:#166534}@media(max-width:820px){.landing-story{margin-top:38px;padding-top:34px}.landing-pain,.landing-simple{grid-template-columns:1fr}.landing-story-card{text-align:left}.landing-season{padding:24px 18px}}`;
+  document.head.appendChild(style);
+
+  const story=document.createElement('section');
+  story.id='landingStory';story.className='landing-story';
+  story.innerHTML=`
+    <div class="landing-story-intro">
+      <h2>Tu connais le problème.</h2>
+      <p>Tu prépares une séance pour 16 joueurs. À quelques heures de l'entraînement, tu ne sais toujours pas combien seront vraiment là.</p>
+    </div>
+    <div class="landing-pain">
+      <div class="landing-story-card"><h3>💬 Fini les « présent ? absent ? »</h3><p>Certains répondent sur WhatsApp, d'autres ne répondent pas, une réponse date de trois jours… et tu dois encore relancer. <strong>FlemiCoach regroupe les disponibilités au même endroit.</strong></p></div>
+      <div class="landing-story-card"><h3>⚽ Prépare avec le bon effectif</h3><p>Vois rapidement qui sera là avant l'entraînement ou le match et adapte tes groupes, ateliers et oppositions sans découvrir ton effectif au dernier moment.</p></div>
+    </div>
+    <div class="landing-season">
+      <h2>Savoir qui vient, c'est bien. Comprendre ton groupe, c'est mieux.</h2>
+      <p>Présence réelle, taux de réponse, fiabilité et assiduité : au fil des semaines, tu vois qui est régulier, qui répond, qui ne répond jamais et qui annonce présent sans venir.</p>
+      <p class="landing-season-line">Avant la séance, tu sais qui vient. Après la séance, tu sais qui était là. Sur la saison, tu comprends ton groupe.</p>
+    </div>
+    <div class="landing-simple">
+      <div class="landing-story-card"><h3>📊 Un vrai suivi dans le temps</h3><ul><li>Présences réelles et absences</li><li>Taux de réponse de chaque joueur</li><li>Fiabilité entre réponse et présence</li><li>Vision de l'assiduité sur la saison</li></ul></div>
+      <div class="landing-story-card"><h3>📱 Plus simple aussi pour le groupe</h3><p>Pas d'application à installer et pas de compte à créer pour répondre. Joueurs ou familles ouvrent le lien, sélectionnent le joueur et indiquent <strong>Présent / Absent</strong> en quelques secondes.</p></div>
+    </div>`;
+  grid.after(story);
+}
+
 document.querySelector('[data-view="calendar"]')?.addEventListener('click',()=>setTimeout(syncAll,400));
 document.querySelector('[data-view="dashboard"]')?.addEventListener('click',()=>setTimeout(syncAll,300));
 document.querySelectorAll('#calendar .filter').forEach(b=>b.addEventListener('click',()=>setTimeout(syncCalendar,180)));
@@ -149,3 +182,4 @@ const obs=new MutationObserver(()=>{if(!busy)setTimeout(syncAll,100)});
 setTimeout(()=>{const h=$('lifecycleHost');if(h)obs.observe(h,{childList:true,subtree:true});syncAll();},1500);
 window.addEventListener('focus',()=>setTimeout(syncAll,250));
 setInterval(syncAll,2500);
+enhanceLanding();
