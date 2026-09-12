@@ -80,9 +80,9 @@ async function searchClubs() {
   results.innerHTML = '';
   status('Recherche du club…');
   try {
-    const data = await invoke({ action:'search_clubs', query:q });
-    const clubs = data.clubs || [];
-    if (!clubs.length) return status('Aucun club trouvé.', 'error');
+    const { data: clubs, error } = await supabase.rpc('search_fff_clubs_local', { q, result_limit: 20 });
+    if (error) throw error;
+    if (!clubs?.length) return status('Aucun club trouvé.', 'error');
     status(`${clubs.length} club(s) trouvé(s).`);
     for (const club of clubs) {
       const b = document.createElement('button');
@@ -92,7 +92,7 @@ async function searchClubs() {
       b.addEventListener('click', () => chooseClub(club, b));
       results.appendChild(b);
     }
-  } catch (e) { status(e.message, 'error'); }
+  } catch (e) { status(e.message || 'Recherche FFF impossible.', 'error'); }
 }
 
 async function chooseClub(club, button) {
