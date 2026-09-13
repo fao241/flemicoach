@@ -4,75 +4,61 @@ import './fff-sync.js';
 const $ = id => document.getElementById(id);
 let selectedFilter = 'all';
 let observer = null;
-let applyVersion = 0;
-let applyScheduled = false;
 const typeCache = new Map();
 
-function scheduleApply(delay = 0) {
-  if (applyScheduled && delay === 0) return;
-  if (delay > 0) {
-    setTimeout(() => applyFilter().catch(console.error), delay);
-    return;
+function ensureStrictCss() {
+  if ($('strictCalendarFilterCss')) return;
+  const style = document.createElement('style');
+  style.id = 'strictCalendarFilterCss';
+  style.textContent = `
+    #calendar[data-event-filter="training"] #matchActions{display:none!important}
+    #calendar[data-event-filter="training"] #lifecycleHost .life-card[data-event-type="match"]{display:none!important}
+    #calendar[data-event-filter="training"] #lifecycleHost .life-card[data-event-type="event"]{display:none!important}
+
+    #calendar[data-event-filter="match"] #lifecycleHost .life-card[data-event-type="training"]{display:none!important}
+    #calendar[data-event-filter="match"] #lifecycleHost .life-card[data-event-type="event"]{display:none!important}
+  `;
+  document.head.appendChild(style);
+}
+
+async function classifyCards() {
+  const host = $('lifecycleHost');
+  if (!host) return;
+  const cards = [...host.querySelectorAll('.life-card[data-detail]')];
+  const missing = [...new Set(cards.map(card => card.dataset.detail).filter(id => id && !typeCache.has(id)))];
+
+  if (missing.length) {
+    const { data, error } = await supabase.from('events').select('id,type').in('id', missing);
+    if (error) throw error;
+    for (const event of data || []) typeCache.set(event.id, event.type);
   }
-  applyScheduled = true;
-  requestAnimationFrame(() => {
-    applyScheduled = false;
-    applyFilter().catch(console.error);
-  });
-}
 
-async function loadTypes(cards) {
-  const ids = cards.map(card => card.dataset.detail).filter(Boolean);
-  const missing = [...new Set(ids.filter(id => !typeCache.has(id)))];
-  if (!missing.length) return;
-
-  const { data, error } = await supabase
-    .from('events')
-    .select('id,type')
-    .in('id', missing);
-
-  if (error) throw error;
-  for (const event of data || []) typeCache.set(event.id, event.type);
-}
-
-function setMatchActionsVisibility() {
-  const box = $('matchActions');
-  if (!box) return;
-  if (selectedFilter === 'match') {
-    box.style.removeProperty('display');
-  } else {
-    box.style.setProperty('display', 'none', 'important');
+  for (const card of cards) {
+    const type = typeCache.get(card.dataset.detail);
+    if (type) card.dataset.eventType = type;
   }
 }
 
 async function applyFilter() {
-  const version = ++applyVersion;
+  const calendar = $('calendar');
   const host = $('lifecycleHost');
-  if (!host) return;
+  if (!calendar || !host) return;
+
+  ensureStrictCss();
+  calendar.dataset.eventFilter = selectedFilter;
+  await classifyCards();
 
   const cards = [...host.querySelectorAll('.life-card[data-detail]')];
-
-  // Pendant le changement de filtre, on évite d'afficher brièvement le mauvais type.
-  if (selectedFilter !== 'all') {
-    for (const card of cards) card.style.setProperty('display', 'none', 'important');
-  }
-
-  await loadTypes(cards);
-  if (version !== applyVersion) return;
-
-  let visibleCount = 0;
   for (const card of cards) {
-    const type = typeCache.get(card.dataset.detail);
+    const type = card.dataset.eventType;
     const visible = selectedFilter === 'all' || type === selectedFilter;
-    if (visible) {
-      card.style.removeProperty('display');
-      visibleCount++;
-    } else {
-      card.style.setProperty('display', 'none', 'important');
-    }
+    if (visible) card.style.removeProperty('display');
+    else card.style.setProperty('display', 'none', 'important');
   }
 
-  setMatchActionsVisibility();
+  document.querySelectorAll('#calendar .filter').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === selectedFilter);
+  });
 
   let empty = $('calendarFilterEmpty');
   if (!empty) {
@@ -83,6 +69,7 @@ async function applyFilter() {
     host.appendChild(empty);
   }
 
+  const visibleCount = cards.filter(card => selectedFilter === 'all' || card.dataset.eventType === selectedFilter).length;
   if (!visibleCount) {
     empty.textContent = selectedFilter === 'training'
       ? 'Aucun entraînement dans cette période.'
@@ -97,20 +84,15 @@ async function applyFilter() {
 
 function selectFilter(value) {
   selectedFilter = value || 'all';
-  document.querySelectorAll('#calendar .filter').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.filter === selectedFilter);
-  });
-  scheduleApply();
-  scheduleApply(120);
-  scheduleApply(450);
+  const calendar = $('calendar');
+  if (calendar) calendar.dataset.eventFilter = selectedFilter;
+  applyFilter().catch(console.error);
 }
 
 function wireFilters() {
   document.querySelectorAll('#calendar .filter').forEach(btn => {
-    if (btn.dataset.realFilterWired) return;
-    btn.dataset.realFilterWired = '1';
-
-    // Capture phase: ce gestionnaire devient l'unique source de vérité du filtre.
+    if (btn.dataset.strictFilterBound) return;
+    btn.dataset.strictFilterBound = '1';
     btn.addEventListener('click', event => {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -120,22 +102,24 @@ function wireFilters() {
 }
 
 function attach() {
+  ensureStrictCss();
   wireFilters();
   const calendar = $('calendar');
   if (!calendar) return;
+  calendar.dataset.eventFilter = selectedFilter;
 
   if (observer) observer.disconnect();
-  observer = new MutationObserver(() => scheduleApply());
+  observer = new MutationObserver(() => applyFilter().catch(console.error));
   observer.observe(calendar, { childList: true, subtree: true });
 
-  scheduleApply();
+  applyFilter().catch(console.error);
 }
 
-document.querySelector('[data-view="calendar"]')?.addEventListener('click', () => setTimeout(attach, 180));
+document.querySelector('[data-view="calendar"]')?.addEventListener('click', () => setTimeout(attach, 150));
 $('teamSelect')?.addEventListener('change', () => {
   typeCache.clear();
-  setTimeout(attach, 220);
+  setTimeout(attach, 200);
 });
 
-setTimeout(attach, 700);
-setTimeout(attach, 1500);
+setTimeout(attach, 500);
+setTimeout(attach, 1200);
