@@ -1,6 +1,7 @@
 import { supabase } from './supabase.js';
 
 const MAX_NOTIFICATIONS = 5;
+const APP_SCREEN_ID = 'appScreen';
 
 async function loadNotifications() {
   const { data, error } = await supabase
@@ -45,11 +46,14 @@ function escapeHtml(value) {
   return element.innerHTML;
 }
 
+function isAppVisible() {
+  const appScreen = document.getElementById(APP_SCREEN_ID);
+  return Boolean(appScreen && !appScreen.classList.contains('hidden'));
+}
+
 function render(notifications) {
   document.getElementById('coachNotifications')?.remove();
-
-  const appScreen = document.getElementById('appScreen');
-  if (!appScreen || appScreen.classList.contains('hidden')) return;
+  if (!isAppVisible()) return;
 
   const root = document.createElement('div');
   root.id = 'coachNotifications';
@@ -86,12 +90,33 @@ function render(notifications) {
 }
 
 async function refresh() {
+  if (!isAppVisible()) return;
   ensureStyles();
   render(await loadNotifications());
 }
 
+function observeAppVisibility() {
+  const appScreen = document.getElementById(APP_SCREEN_ID);
+  if (!appScreen) return;
+
+  let wasVisible = isAppVisible();
+  const observer = new MutationObserver(() => {
+    const isVisible = isAppVisible();
+    if (isVisible && !wasVisible) refresh();
+    if (!isVisible) document.getElementById('coachNotifications')?.remove();
+    wasVisible = isVisible;
+  });
+
+  observer.observe(appScreen, {
+    attributes: true,
+    attributeFilter: ['class']
+  });
+}
+
 export function startCoachNotifications() {
+  observeAppVisibility();
   refresh();
+
   window.addEventListener('focus', refresh);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) refresh();
