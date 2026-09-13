@@ -1,99 +1,141 @@
+import { supabase } from './supabase.js';
 import './fff-sync.js';
 
-const $=id=>document.getElementById(id);
-let selectedFilter='all';
-let observer=null;
+const $ = id => document.getElementById(id);
+let selectedFilter = 'all';
+let observer = null;
+let applyVersion = 0;
+let applyScheduled = false;
+const typeCache = new Map();
 
-function ensureFilterCss(){
-  if($('calendarFilterStrictCss'))return;
-  const style=document.createElement('style');
-  style.id='calendarFilterStrictCss';
-  style.textContent=`
-    #calendar.filter-mode-training #lifecycleHost .life-card[data-event-type="match"],
-    #calendar.filter-mode-training #lifecycleHost .life-card[data-event-type="event"]{display:none!important}
-    #calendar.filter-mode-training #matchActions{display:none!important}
-
-    #calendar.filter-mode-match #lifecycleHost .life-card[data-event-type="training"],
-    #calendar.filter-mode-match #lifecycleHost .life-card[data-event-type="event"]{display:none!important}
-
-    #calendar.filter-mode-all #lifecycleHost .life-card{display:block}
-  `;
-  document.head.appendChild(style);
-}
-
-function detectType(card){
-  const label=(card.querySelector('.eyebrow')?.textContent||'').trim().toLowerCase();
-  if(label.startsWith('match'))return'match';
-  if(label.startsWith('entraînement')||label.startsWith('entrainement'))return'training';
-  return'event';
-}
-
-function classifyCards(){
-  const host=$('lifecycleHost');
-  if(!host)return;
-  host.querySelectorAll('.life-card').forEach(card=>{
-    card.dataset.eventType=detectType(card);
+function scheduleApply(delay = 0) {
+  if (applyScheduled && delay === 0) return;
+  if (delay > 0) {
+    setTimeout(() => applyFilter().catch(console.error), delay);
+    return;
+  }
+  applyScheduled = true;
+  requestAnimationFrame(() => {
+    applyScheduled = false;
+    applyFilter().catch(console.error);
   });
 }
 
-function applyFilter(){
-  ensureFilterCss();
-  classifyCards();
-  const calendar=$('calendar');
-  if(!calendar)return;
-  calendar.classList.remove('filter-mode-all','filter-mode-training','filter-mode-match');
-  calendar.classList.add(`filter-mode-${selectedFilter}`);
+async function loadTypes(cards) {
+  const ids = cards.map(card => card.dataset.detail).filter(Boolean);
+  const missing = [...new Set(ids.filter(id => !typeCache.has(id)))];
+  if (!missing.length) return;
 
-  document.querySelectorAll('#calendar .filter').forEach(btn=>{
-    btn.classList.toggle('active',btn.dataset.filter===selectedFilter);
-  });
+  const { data, error } = await supabase
+    .from('events')
+    .select('id,type')
+    .in('id', missing);
 
-  const host=$('lifecycleHost');
-  if(!host)return;
-  const cards=[...host.querySelectorAll('.life-card')];
-  const visible=cards.filter(card=>selectedFilter==='all'||card.dataset.eventType===selectedFilter);
+  if (error) throw error;
+  for (const event of data || []) typeCache.set(event.id, event.type);
+}
 
-  let empty=$('calendarFilterEmpty');
-  if(!empty){
-    empty=document.createElement('div');
-    empty.id='calendarFilterEmpty';
-    empty.className='card muted';
-    empty.style.cssText='padding:24px;text-align:center;display:none';
+function setMatchActionsVisibility() {
+  const box = $('matchActions');
+  if (!box) return;
+  if (selectedFilter === 'match') {
+    box.style.removeProperty('display');
+  } else {
+    box.style.setProperty('display', 'none', 'important');
+  }
+}
+
+async function applyFilter() {
+  const version = ++applyVersion;
+  const host = $('lifecycleHost');
+  if (!host) return;
+
+  const cards = [...host.querySelectorAll('.life-card[data-detail]')];
+
+  // Pendant le changement de filtre, on évite d'afficher brièvement le mauvais type.
+  if (selectedFilter !== 'all') {
+    for (const card of cards) card.style.setProperty('display', 'none', 'important');
+  }
+
+  await loadTypes(cards);
+  if (version !== applyVersion) return;
+
+  let visibleCount = 0;
+  for (const card of cards) {
+    const type = typeCache.get(card.dataset.detail);
+    const visible = selectedFilter === 'all' || type === selectedFilter;
+    if (visible) {
+      card.style.removeProperty('display');
+      visibleCount++;
+    } else {
+      card.style.setProperty('display', 'none', 'important');
+    }
+  }
+
+  setMatchActionsVisibility();
+
+  let empty = $('calendarFilterEmpty');
+  if (!empty) {
+    empty = document.createElement('div');
+    empty.id = 'calendarFilterEmpty';
+    empty.className = 'card muted';
+    empty.style.cssText = 'padding:24px;text-align:center;display:none';
     host.appendChild(empty);
   }
-  if(!visible.length){
-    empty.textContent=selectedFilter==='training'?'Aucun entraînement dans cette période.':selectedFilter==='match'?'Aucun match dans cette période.':'Aucun événement dans cette période.';
-    empty.style.display='block';
-  }else{
-    empty.style.display='none';
+
+  if (!visibleCount) {
+    empty.textContent = selectedFilter === 'training'
+      ? 'Aucun entraînement dans cette période.'
+      : selectedFilter === 'match'
+        ? 'Aucun match dans cette période.'
+        : 'Aucun événement dans cette période.';
+    empty.style.display = 'block';
+  } else {
+    empty.style.display = 'none';
   }
 }
 
-function wireFilters(){
-  document.querySelectorAll('#calendar .filter').forEach(btn=>{
-    if(btn.dataset.strictFilterWired)return;
-    btn.dataset.strictFilterWired='1';
-    btn.addEventListener('click',()=>{
-      selectedFilter=btn.dataset.filter||'all';
-      requestAnimationFrame(applyFilter);
-      setTimeout(applyFilter,120);
-      setTimeout(applyFilter,450);
-    });
+function selectFilter(value) {
+  selectedFilter = value || 'all';
+  document.querySelectorAll('#calendar .filter').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === selectedFilter);
+  });
+  scheduleApply();
+  scheduleApply(120);
+  scheduleApply(450);
+}
+
+function wireFilters() {
+  document.querySelectorAll('#calendar .filter').forEach(btn => {
+    if (btn.dataset.realFilterWired) return;
+    btn.dataset.realFilterWired = '1';
+
+    // Capture phase: ce gestionnaire devient l'unique source de vérité du filtre.
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      selectFilter(btn.dataset.filter);
+    }, true);
   });
 }
 
-function attach(){
-  ensureFilterCss();
+function attach() {
   wireFilters();
-  const host=$('lifecycleHost');
-  if(!host)return;
-  if(observer)observer.disconnect();
-  observer=new MutationObserver(()=>requestAnimationFrame(applyFilter));
-  observer.observe(host,{childList:true,subtree:true});
-  applyFilter();
+  const calendar = $('calendar');
+  if (!calendar) return;
+
+  if (observer) observer.disconnect();
+  observer = new MutationObserver(() => scheduleApply());
+  observer.observe(calendar, { childList: true, subtree: true });
+
+  scheduleApply();
 }
 
-document.querySelector('[data-view="calendar"]')?.addEventListener('click',()=>setTimeout(attach,200));
-$('teamSelect')?.addEventListener('change',()=>setTimeout(attach,250));
-setTimeout(attach,700);
-setTimeout(attach,1500);
+document.querySelector('[data-view="calendar"]')?.addEventListener('click', () => setTimeout(attach, 180));
+$('teamSelect')?.addEventListener('change', () => {
+  typeCache.clear();
+  setTimeout(attach, 220);
+});
+
+setTimeout(attach, 700);
+setTimeout(attach, 1500);
