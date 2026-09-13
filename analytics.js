@@ -1,4 +1,5 @@
 import './feedback.js';
+import './event-sharing.js';
 import { supabase } from './supabase.js';
 
 const KEY='flemicoach_analytics_id';
@@ -18,20 +19,10 @@ async function track(name,{teamId=null,eventId=null}={}){
   }catch(e){console.debug('analytics',e);}
 }
 
-// Une visite par chargement de page.
 track('page_view');
-
-// Début d'inscription.
 document.querySelector('[data-auth-tab="signup"]')?.addEventListener('click',()=>track('signup_started'),{once:true});
-
-// Partage depuis l'espace coach.
 document.getElementById('shareWhatsApp')?.addEventListener('click',()=>track('share_whatsapp_clicked'));
-
-// Le lien public contient ?event=<token> dans le flux actuel : on enregistre seulement l'ouverture,
-// sans nom, email ni adresse IP applicative.
 const query=new URLSearchParams(location.search);
 if(query.get('event')) track('response_link_opened');
-
 document.getElementById('publicForm')?.addEventListener('submit',()=>track('response_submitted'));
-
 window.flemiTrack=track;
