@@ -2,6 +2,7 @@ import { supabase } from './supabase.js';
 
 const MAX_NOTIFICATIONS = 5;
 const APP_SCREEN_ID = 'app';
+const READ_STORAGE_PREFIX = 'flemicoach:lastSeenAnnouncementId';
 
 async function loadNotifications() {
   const { data, error } = await supabase
@@ -17,6 +18,26 @@ async function loadNotifications() {
   }
 
   return data || [];
+}
+
+async function getReadStorageKey() {
+  const { data } = await supabase.auth.getUser();
+  const userId = data?.user?.id || 'anonymous';
+  return `${READ_STORAGE_PREFIX}:${userId}`;
+}
+
+async function getLastSeenAnnouncementId() {
+  const storageKey = await getReadStorageKey();
+  const storedValue = Number(localStorage.getItem(storageKey));
+  return Number.isFinite(storedValue) ? storedValue : 0;
+}
+
+async function markNotificationsAsRead(notifications) {
+  if (!notifications.length) return;
+
+  const latestId = Math.max(...notifications.map((notification) => Number(notification.id) || 0));
+  const storageKey = await getReadStorageKey();
+  localStorage.setItem(storageKey, String(latestId));
 }
 
 function ensureStyles() {
@@ -51,7 +72,7 @@ function isAppVisible() {
   return Boolean(appScreen && !appScreen.classList.contains('hidden'));
 }
 
-function render(notifications) {
+function render(notifications, lastSeenAnnouncementId) {
   document.getElementById('coachNotifications')?.remove();
   if (!isAppVisible()) return;
 
@@ -59,8 +80,12 @@ function render(notifications) {
   root.id = 'coachNotifications';
   root.className = 'coach-notifications';
 
-  const badge = notifications.length
-    ? `<span class="coach-notifications__badge">${notifications.length}</span>`
+  const unreadCount = notifications.filter(
+    (notification) => Number(notification.id) > lastSeenAnnouncementId
+  ).length;
+
+  const badge = unreadCount
+    ? `<span class="coach-notifications__badge">${unreadCount}</span>`
     : '';
 
   const items = notifications.length
@@ -81,9 +106,14 @@ function render(notifications) {
   `;
 
   const button = root.querySelector('button');
-  button.addEventListener('click', () => {
+  button.addEventListener('click', async () => {
     const isOpen = root.classList.toggle('is-open');
     button.setAttribute('aria-expanded', String(isOpen));
+
+    if (isOpen && unreadCount > 0) {
+      await markNotificationsAsRead(notifications);
+      root.querySelector('.coach-notifications__badge')?.remove();
+    }
   });
 
   document.body.appendChild(root);
@@ -91,8 +121,13 @@ function render(notifications) {
 
 async function refresh() {
   if (!isAppVisible()) return;
+
   ensureStyles();
-  render(await loadNotifications());
+  const [notifications, lastSeenAnnouncementId] = await Promise.all([
+    loadNotifications(),
+    getLastSeenAnnouncementId()
+  ]);
+  render(notifications, lastSeenAnnouncementId);
 }
 
 function observeAppVisibility() {
