@@ -1,7 +1,7 @@
 import { supabase } from './supabase.js';
 
 const MAX_NOTIFICATIONS = 5;
-const APP_SCREEN_ID = 'appScreen';
+const APP_SCREEN_ID = 'app';
 
 async function loadNotifications() {
   const { data, error } = await supabase
