@@ -1,5 +1,6 @@
 import './feedback.js';
 import './event-sharing.js';
+import { startCoachNotifications } from './notifications.js';
 import { supabase } from './supabase.js';
 
 const KEY='flemicoach_analytics_id';
@@ -26,3 +27,4 @@ const query=new URLSearchParams(location.search);
 if(query.get('event')) track('response_link_opened');
 document.getElementById('publicForm')?.addEventListener('submit',()=>track('response_submitted'));
 window.flemiTrack=track;
+startCoachNotifications();
