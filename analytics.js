@@ -1,5 +1,6 @@
 import './feedback.js';
 import './event-sharing.js';
+import './future-completion-guard.js';
 import { startCoachNotifications } from './notifications.js';
 import { supabase } from './supabase.js';
 
