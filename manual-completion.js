@@ -2,6 +2,7 @@ import './analytics.js';
 import './onboarding-fff.js';
 import './future-completion-guard.js';
 import './attendance-validation-fix.js';
+import './player-absence-insights.js';
 import { supabase } from './supabase.js';
 const $=id=>document.getElementById(id);
 const teamId=()=>$('teamSelect')?.value||null;
