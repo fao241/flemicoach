@@ -4,6 +4,7 @@ import './future-completion-guard.js';
 import './attendance-validation-fix.js';
 import './player-absence-insights.js';
 import './player-management.js';
+import './home-next-event-fix.js';
 import { supabase } from './supabase.js';
 const $=id=>document.getElementById(id);
 const teamId=()=>$('teamSelect')?.value||null;
@@ -30,6 +31,7 @@ async function finish(id){
     const {error}=await supabase.from('events').update({completed:true,completed_at:now,attendance_validated_at:now}).eq('id',id).eq('team_id',teamId());
     if(error)throw error;
     await sync();
+    await window.flemiSyncHomeNext?.();
   }catch(err){console.error(err);alert('Impossible de terminer cet événement.');}finally{busy=false}
 }
 function button(id){return `<button type="button" class="btn primary small-btn manual-finish" data-finish-id="${id}">✓ Terminer</button>`}
