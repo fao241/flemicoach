@@ -69,6 +69,9 @@ hr{border:0;border-top:1px solid var(--border);margin:6px 0 14px}
   .grid.two{grid-template-columns:1fr}.training-rule{grid-template-columns:1fr 1fr}.training-rule .remove-rule{grid-column:1/-1}.attendance-row{grid-template-columns:1fr}.public-card,.auth-card{padding:20px;border-radius:20px}.auth-card h1,.public-card h1{font-size:1.55rem}
   #attendance.active-view{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))}
   #attendance.active-view #saveAttendance{position:static;width:100%;margin-top:12px;margin-bottom:calc(16px + env(safe-area-inset-bottom,0px));min-height:48px}
+  #players.active-view{padding-bottom:calc(130px + env(safe-area-inset-bottom,0px));overflow:visible;min-height:calc(100vh - 120px)}
+  #players.active-view .list{overflow:visible}
+  #players.active-view #playerDetail{margin-bottom:calc(28px + env(safe-area-inset-bottom,0px))}
   .btn{min-height:43px}.modal-box{padding:17px}
 }
 
