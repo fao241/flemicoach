@@ -1,5 +1,7 @@
 import './analytics.js';
 import './onboarding-fff.js';
+import './future-completion-guard.js';
+import './attendance-validation-fix.js';
 import { supabase } from './supabase.js';
 const $=id=>document.getElementById(id);
 const teamId=()=>$('teamSelect')?.value||null;
@@ -13,9 +15,10 @@ async function events(){
 
 async function finish(id,title){
   if(busy)return;
-  if(!confirm(`Terminer « ${title} » maintenant ?\n\nL’événement passera dans l’historique et les réponses parents seront fermées.`))return;
+  if(!confirm(`Terminer « ${title} » maintenant ?\n\nL’événement passera dans l’historique et les réponses seront fermées.`))return;
   busy=true;
-  const {error}=await supabase.from('events').update({completed:true,completed_at:new Date().toISOString()}).eq('id',id);
+  const now=new Date().toISOString();
+  const {error}=await supabase.from('events').update({completed:true,completed_at:now,attendance_validated_at:now}).eq('id',id);
   busy=false;
   if(error)return alert(`Impossible de terminer l’événement : ${error.message}`);
   await syncAll();
