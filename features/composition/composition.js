@@ -34,8 +34,9 @@ async function loadMatchList(){
 async function openEditor(match){
   const root=$('compositionView');root.innerHTML='<div class="card">Chargement des convoqués…</div>';
   try{
-    const [callups,existing]=await Promise.all([loadCallups(match.id),loadComposition(match.id)]);
-    if(!callups.length){root.innerHTML='<div class="card"><h2>Aucun joueur convoqué</h2><p class="muted">Aucune convocation enregistrée pour ce match. La composition utilise uniquement la liste des joueurs convoqués.</p><button class="btn ghost" id="compBack">Retour</button></div>';$('compBack').onclick=loadMatchList;return;}
+    const callups=await loadCallups(match.id);
+    if(!callups.length){root.innerHTML='<div class="card"><h2>Aucun joueur convoqué</h2><p class="muted">Aucune convocation enregistrée pour ce match.</p><button class="btn ghost" id="compBack">Retour</button></div>';$('compBack').onclick=loadMatchList;return;}
+    const existing=await loadComposition(match.id);
     createEditor(root,{match,callups,existing,onSave:saveComposition,onPublish:async state=>{
       const publicToken=await publishComposition(state),url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('composition',publicToken);
       const shareUrl=url.toString(),text=`Composition · ${match.title}\n${shareUrl}`;
