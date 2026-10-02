@@ -41,3 +41,10 @@
  .fc-compose-footer{position:sticky;bottom:68px;z-index:18;flex-direction:column;align-items:stretch;padding:9px}.fc-compose-footer .fc-actions{display:grid;grid-template-columns:1fr 1fr}.fc-compose-footer .btn{padding:10px 8px}
  .fc-public-shell{padding:10px}.fc-public-card{padding:15px}.fc-help{font-size:.7rem}
 }
+
+#compositionMatches{padding:0;overflow:hidden}
+.fc-match-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border-bottom:1px solid #edf1ee}
+.fc-match-row:last-child{border-bottom:0}
+.fc-match-row strong{font-size:.96rem;line-height:1.2}
+.fc-match-row .btn{flex:0 0 auto}
+@media(max-width:760px){#compositionMatches{border-radius:16px}.fc-match-row{padding:13px 12px}.fc-match-row strong{font-size:.92rem}.fc-match-row .btn{padding:8px 11px}}
