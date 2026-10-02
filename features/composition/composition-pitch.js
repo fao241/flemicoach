@@ -6,7 +6,7 @@ export function renderPitch(root, players, {readonly=false,onMove=()=>{},onSelec
     const el=document.createElement('button');
     el.type='button'; el.className='fc-player-dot'; el.dataset.playerId=p.playerId;
     el.style.left=p.x+'%'; el.style.top=p.y+'%';
-    el.innerHTML='<span>'+escapeHtml(shortName(p.name))+'</span>'+(p.captain?'<b>C</b>':'')+(p.goalkeeper?'<i>🧤</i>':'');
+    el.innerHTML='<span>'+escapeHtml(p.name || 'Joueur')+'</span>'+(p.captain?'<b>C</b>':'')+(p.goalkeeper?'<i>🧤</i>':'');
     if(readonly){el.disabled=true;} else {
       el.addEventListener('click',e=>{e.stopPropagation();onSelect(p.playerId);});
       el.addEventListener('pointerdown',e=>startDrag(e,el,p,root,onMove));
@@ -28,5 +28,4 @@ function startDrag(e,el,p,root,onMove){
   const up=()=>{el.removeEventListener('pointermove',move);el.removeEventListener('pointerup',up);};
   el.addEventListener('pointermove',move);el.addEventListener('pointerup',up);
 }
-const shortName=n=>{const a=String(n||'').trim().split(/\s+/);return a.length>1?a[0]+' '+a[a.length-1][0]+'.':a[0]||'Joueur';};
 const escapeHtml=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
