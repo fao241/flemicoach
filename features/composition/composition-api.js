@@ -18,34 +18,20 @@ export async function listMatches(teamId) {
 export async function loadCallups(eventId) {
   if (!eventId) throw new Error('Match invalide.');
 
-  // Wait for persisted authentication before querying tables protected by RLS.
+  // Wait for persisted authentication before querying the authenticated RPC.
   const { data: auth, error: authError } = await supabase.auth.getSession();
   if (authError) throw authError;
   if (!auth?.session) throw new Error('Session expirée. Reconnecte-toi pour charger les convoqués.');
 
-  const { data: event, error: eventError } = await supabase.from('events')
-    .select('id').eq('id',eventId).single();
-  if (eventError) throw eventError;
-  if (!event) throw new Error('Match inaccessible.');
+  // Use the dedicated SECURITY DEFINER function. It resolves callups and players
+  // server-side while still checking that the current user belongs to the team.
+  // This avoids Composition depending on separate RLS-filtered queries.
+  const { data: players, error } = await supabase.rpc('get_match_callup_players', {
+    p_event_id: eventId
+  });
+  if (error) throw error;
 
-  const { data: callups, error: callupError } = await supabase.from('match_callups')
-    .select('player_id')
-    .eq('event_id',eventId);
-  if (callupError) throw callupError;
-
-  const ids=[...new Set((callups || []).map(row=>row.player_id).filter(Boolean))];
-  if (!ids.length) return [];
-
-  const { data: players, error: playerError } = await supabase.from('players')
-    .select('id,name')
-    .in('id',ids);
-  if (playerError) throw playerError;
-
-  const byId=new Map((players || []).map(player=>[player.id,player]));
-  const missing=ids.filter(id=>!byId.has(id));
-  if(missing.length) throw new Error(`Impossible de charger ${missing.length} joueur(s) convoqué(s).`);
-
-  return sortByName(ids.map(id=>byId.get(id)));
+  return sortByName(players || []);
 }
 
 export async function loadComposition(eventId) {
