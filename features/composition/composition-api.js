@@ -44,11 +44,17 @@ export async function saveComposition(state) {
   if (error) throw error;
   const { error: delError } = await supabase.from('match_composition_players').delete().eq('composition_id',comp.id);
   if (delError) throw delError;
-  const rows=state.players.filter(p=>p.status!=='AVAILABLE').map(p=>({
+  const uniquePlayers = new Map();
+  state.players.filter(p=>p.status!=='AVAILABLE').forEach(p=>uniquePlayers.set(p.playerId,p));
+  const rows=[...uniquePlayers.values()].map(p=>({
     composition_id:comp.id,player_id:p.playerId,status:p.status,x:p.x,y:p.y,
     is_captain:!!p.captain,is_goalkeeper:!!p.goalkeeper
   }));
-  if(rows.length){const {error:e}=await supabase.from('match_composition_players').insert(rows);if(e)throw e;}
+  if(rows.length){
+    const {error:e}=await supabase.from('match_composition_players')
+      .upsert(rows,{onConflict:'composition_id,player_id'});
+    if(e)throw e;
+  }
   return comp;
 }
 
