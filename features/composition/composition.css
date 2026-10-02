@@ -12,7 +12,7 @@
 .fc-half{position:absolute;left:0;right:0;top:50%;border-top:2px solid rgba(255,255,255,.76)}
 .fc-circle{position:absolute;width:25%;aspect-ratio:1;border:2px solid rgba(255,255,255,.76);border-radius:50%;left:37.5%;top:50%;transform:translateY(-50%)}
 .fc-box{position:absolute;left:25%;width:50%;height:16%;border:2px solid rgba(255,255,255,.76)}.fc-box.top{top:0;border-top:0}.fc-box.bottom{bottom:0;border-bottom:0}
-.fc-player-dot{position:absolute;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.95);background:#fff;color:#183d25;border-radius:11px;padding:6px 8px;font-size:.78rem;font-weight:850;box-shadow:0 4px 12px rgba(0,0,0,.22);z-index:2;white-space:nowrap;touch-action:none;cursor:grab;max-width:105px;overflow:hidden;text-overflow:ellipsis}
+.fc-player-dot{position:absolute;transform:translate(-50%,-50%);border:2px solid rgba(255,255,255,.95);background:#fff;color:#183d25;border-radius:11px;padding:6px 8px;font-size:.78rem;font-weight:850;box-shadow:0 4px 12px rgba(0,0,0,.22);z-index:2;white-space:normal;touch-action:none;cursor:grab;max-width:150px;overflow:visible;text-overflow:clip;line-height:1.08;text-align:center}
 .fc-player-dot:active{cursor:grabbing;transform:translate(-50%,-50%) scale(1.04)}
 .fc-player-dot b,.fc-player-dot i{margin-left:4px;font-size:.7rem}.fc-player-dot i{font-style:normal}
 .fc-help{text-align:center;margin:9px 0 0;font-size:.75rem}
@@ -36,7 +36,7 @@
  .fc-wizard{grid-template-columns:1fr 1fr;padding:10px;gap:8px}.fc-wizard [data-a="apply"]{grid-column:1/-1;width:100%}
  .fc-editor-grid{display:flex;flex-direction:column;gap:10px}.fc-pitch-wrap{width:100%;padding:7px;border-radius:16px}
  .fc-pitch{width:min(100%,390px)}.fc-squads{position:static;width:100%;padding:12px;border-radius:16px;order:2}
- .fc-player-dot{font-size:.67rem;padding:5px 6px;max-width:82px;border-radius:9px}
+ .fc-player-dot{font-size:.64rem;padding:5px 6px;max-width:120px;border-radius:9px}
  .fc-selected{position:sticky;bottom:76px;z-index:20;box-shadow:0 8px 28px rgba(0,0,0,.15);margin-top:8px}
  .fc-compose-footer{position:sticky;bottom:68px;z-index:18;flex-direction:column;align-items:stretch;padding:9px}.fc-compose-footer .fc-actions{display:grid;grid-template-columns:1fr 1fr}.fc-compose-footer .btn{padding:10px 8px}
  .fc-public-shell{padding:10px}.fc-public-card{padding:15px}.fc-help{font-size:.7rem}

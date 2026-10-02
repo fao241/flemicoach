@@ -33,7 +33,7 @@ export function createEditor(root,{match,callups,existing,onSave,onPublish,onClo
     root.querySelector('#fcAvailableCount').textContent=state.players.filter(p=>p.status==='AVAILABLE').length;
     root.querySelector('#fcSubCount').textContent=state.players.filter(p=>p.status==='SUBSTITUTE').length;
     root.querySelector('#fcStarterCount').textContent=starters();
-    root.querySelectorAll('[data-player]').forEach(b=>b.onclick=()=>{selected=b.dataset.player;showSelected();});
+    root.querySelectorAll('[data-player]').forEach(b=>b.onclick=()=>{selected=b.dataset.player;paint();});
     showSelected();
   };
   const showSelected=()=>{
