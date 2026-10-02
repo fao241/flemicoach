@@ -10,10 +10,22 @@ export async function listMatches(teamId) {
 }
 
 export async function loadCallups(eventId) {
-  const { data, error } = await supabase.from('match_callups')
-    .select('player_id,players(id,name)').eq('event_id',eventId);
-  if (error) throw error;
-  return (data || []).map(x=>x.players).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+  const { data: callups, error: callupsError } = await supabase.from('match_callups')
+    .select('player_id').eq('event_id', eventId);
+  if (callupsError) throw callupsError;
+
+  const playerIds = (callups || []).map(row => row.player_id).filter(Boolean);
+  if (!playerIds.length) return [];
+
+  const { data: players, error: playersError } = await supabase.from('players')
+    .select('id,name').in('id', playerIds);
+  if (playersError) throw playersError;
+
+  if ((players || []).length !== playerIds.length) {
+    throw new Error('La liste des joueurs convoqués est incomplète.');
+  }
+
+  return players.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
 }
 
 export async function loadComposition(eventId) {
