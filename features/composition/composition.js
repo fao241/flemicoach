@@ -39,7 +39,8 @@ async function openEditor(match){
     createEditor(root,{match,callups,existing,onSave:saveComposition,onPublish:async state=>{
       const publicToken=await publishComposition(state),url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('composition',publicToken);
       const shareUrl=url.toString(),text=`Composition · ${match.title}\n${shareUrl}`;
-      if(navigator.share)await navigator.share({title:'Composition FlemiCoach',text,url:shareUrl});else{await navigator.clipboard.writeText(text);alert('Lien de composition copié.');}
+      const whatsappUrl='https://wa.me/?text='+encodeURIComponent(text);
+      window.open(whatsappUrl,'_blank','noopener,noreferrer');
     },onClose:loadMatchList});
   }catch(e){root.innerHTML='<div class="card"><h2>Composition indisponible</h2><p class="muted">'+esc(e.message)+'</p></div>';}
 }

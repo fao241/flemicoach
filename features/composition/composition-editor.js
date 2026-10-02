@@ -43,7 +43,9 @@ export function createEditor(root,{match,callups,existing,onSave,onPublish,onClo
   };
   const action=(p,a)=>{
     if(a==='field'){if(p.status!=='STARTER'&&starters()>=state.format)return status('Le terrain est complet pour ce format.');p.status='STARTER';if(p.x==null){p.x=50;p.y=50;}}
-    if(a==='sub')p.status='SUBSTITUTE'; if(a==='avail')p.status='AVAILABLE';
+    if(a==='sub')p.status='SUBSTITUTE';
+    if(a==='avail'){p.status='AVAILABLE';p.captain=false;p.goalkeeper=false;}
+    selected=null;
     if(a==='captain'){const was=p.captain;state.players.forEach(x=>x.captain=false);p.captain=!was;}
     if(a==='gk'){const was=p.goalkeeper;state.players.forEach(x=>x.goalkeeper=false);p.goalkeeper=!was;} paint();
   };
