@@ -55,7 +55,7 @@ export function createEditor(root,{match,callups,existing,onSave,onPublish,onClo
     root.querySelector('[data-a="formation"]').onchange=e=>state.formation=e.target.value;
     root.querySelector('[data-a="apply"]').onclick=applyFormation;
     root.querySelector('[data-a="save"]').onclick=async()=>{try{await onSave(state);status('✓ Brouillon enregistré');}catch(e){status('Enregistrement impossible : '+e.message);}};
-    root.querySelector('[data-a="publish"]').onclick=async()=>{try{if(starters()!==state.format)return status(`Place ${state.format} joueurs sur le terrain avant de publier.`);await onPublish(state);status('✓ Composition publiée');}catch(e){status('Publication impossible : '+e.message);}};
+    root.querySelector('[data-a="publish"]').onclick=async()=>{try{await onPublish(state);status('✓ Composition publiée');}catch(e){status('Publication impossible : '+e.message);}};
   };
   const applyFormation=()=>{if(state.formation==='LIBRE')return status('Choisis un dispositif ou place les joueurs librement.');const pos=formationPositions(state.format,state.formation);const chosen=state.players.filter(p=>p.status==='STARTER').concat(state.players.filter(p=>p.status!=='STARTER')).slice(0,state.format);state.players.forEach(p=>{if(!chosen.includes(p)&&p.status==='STARTER')p.status='SUBSTITUTE';});chosen.forEach((p,i)=>Object.assign(p,{status:'STARTER',x:pos[i].x,y:pos[i].y}));paint();};
   const get=id=>state.players.find(p=>p.playerId===id),starters=()=>state.players.filter(p=>p.status==='STARTER').length,status=t=>root.querySelector('#fcStatus').innerHTML=t;
