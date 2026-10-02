@@ -9,10 +9,28 @@ export async function listMatches(teamId) {
   return data || [];
 }
 
-export async function loadCallups(eventId) {
-  const { data, error } = await supabase.rpc('get_match_callup_players',{p_event_id:eventId});
+async function requireSession() {
+  const { data, error } = await supabase.auth.getSession();
   if (error) throw error;
-  return (data || []).sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+  if (data?.session) return data.session;
+  return await new Promise((resolve,reject)=>{
+    const timeout=setTimeout(()=>{subscription.unsubscribe();reject(new Error('Session utilisateur non disponible.'));},2500);
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,session)=>{
+      if(!session)return;
+      clearTimeout(timeout);subscription.unsubscribe();resolve(session);
+    });
+  });
+}
+
+export async function loadCallups(eventId) {
+  await requireSession();
+  for(let attempt=0;attempt<3;attempt++){
+    const { data, error } = await supabase.rpc('get_match_callup_players',{p_event_id:eventId});
+    if(error) throw error;
+    if(data?.length) return data.sort((a,b)=>a.name.localeCompare(b.name,'fr'));
+    if(attempt<2) await new Promise(resolve=>setTimeout(resolve,250*(attempt+1)));
+  }
+  return [];
 }
 
 export async function loadComposition(eventId) {
