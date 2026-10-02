@@ -18,6 +18,16 @@ export async function listMatches(teamId) {
 export async function loadCallups(eventId) {
   if (!eventId) throw new Error('Match invalide.');
 
+  // Wait for persisted authentication before querying tables protected by RLS.
+  const { data: auth, error: authError } = await supabase.auth.getSession();
+  if (authError) throw authError;
+  if (!auth?.session) throw new Error('Session expirée. Reconnecte-toi pour charger les convoqués.');
+
+  const { data: event, error: eventError } = await supabase.from('events')
+    .select('id').eq('id',eventId).single();
+  if (eventError) throw eventError;
+  if (!event) throw new Error('Match inaccessible.');
+
   const { data: callups, error: callupError } = await supabase.from('match_callups')
     .select('player_id')
     .eq('event_id',eventId);
