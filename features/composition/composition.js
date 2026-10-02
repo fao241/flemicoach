@@ -6,6 +6,22 @@ const $=id=>document.getElementById(id);
 const token=new URLSearchParams(location.search).get('composition');
 if(token) openPublicComposition(token);
 
+function setupNavigation(){
+  const tabs=document.querySelector('.tabs'),main=document.querySelector('#app main');
+  if(!tabs||!main||$('compositionView'))return;
+  const button=document.createElement('button');
+  button.className='tab';button.dataset.view='composition';button.textContent='Compositions';
+  tabs.appendChild(button);
+  const section=document.createElement('section');
+  section.id='compositionView';section.className='view';main.appendChild(section);
+  button.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===button));
+    document.querySelectorAll('#app .view').forEach(x=>x.classList.remove('active-view'));
+    section.classList.add('active-view');loadMatchList();
+  });
+}
+setupNavigation();
+
 async function loadMatchList(){
   const root=$('compositionView'),teamId=$('teamSelect')?.value;if(!root||!teamId)return;
   root.innerHTML='<div class="section-head"><div><h2>Compositions</h2><div class="muted small">Crée une composition à partir des joueurs convoqués.</div></div></div><div id="compositionMatches" class="list card">Chargement…</div>';
