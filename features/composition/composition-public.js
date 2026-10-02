@@ -1,5 +1,5 @@
-import { loadPublicComposition } from './composition-api.js';
-import { renderPitch } from './composition-pitch.js';
+import { loadPublicComposition } from './composition-api.js?v=20261002-2';
+import { renderPitch } from './composition-pitch.js?v=20261002-2';
 
 export async function openPublicComposition(token) {
   document.querySelectorAll('body > section, body > div').forEach(x=>x.classList.add('hidden'));

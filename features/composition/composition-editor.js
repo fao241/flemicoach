@@ -1,5 +1,5 @@
-import { FORMATS, formationPositions } from './formations.js';
-import { renderPitch } from './composition-pitch.js';
+import { FORMATS, formationPositions } from './formations.js?v=20261002-2';
+import { renderPitch } from './composition-pitch.js?v=20261002-2';
 
 export function createEditor(root,{match,callups,existing,onSave,onPublish,onClose}) {
   let state=hydrate(match,callups,existing),selected=null;

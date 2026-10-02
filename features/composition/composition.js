@@ -1,6 +1,6 @@
-import { listMatches,loadCallups,loadComposition,saveComposition,publishComposition } from './composition-api.js';
-import { createEditor } from './composition-editor.js';
-import { openPublicComposition } from './composition-public.js';
+import { listMatches,loadCallups,loadComposition,saveComposition,publishComposition } from './composition-api.js?v=20261002-2';
+import { createEditor } from './composition-editor.js?v=20261002-2';
+import { openPublicComposition } from './composition-public.js?v=20261002-2';
 
 const $=id=>document.getElementById(id);
 const token=new URLSearchParams(location.search).get('composition');
