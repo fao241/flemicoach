@@ -39,11 +39,11 @@ async function openEditor(match){
     createEditor(root,{match,callups,existing,onSave:saveComposition,onPublish:async state=>{
       const publicToken=await publishComposition(state),url=new URL(location.href);url.search='';url.hash='';url.searchParams.set('composition',publicToken);
       const shareUrl=url.toString(),text=`Composition · ${match.title}\n${shareUrl}`;
-      if(navigator.share){
-        await navigator.share({title:'Composition FlemiCoach',text,url:shareUrl});
-      }else{
+      try{
         await navigator.clipboard.writeText(text);
-        alert('Lien de composition copié. Tu peux le partager sur WhatsApp.');
+        alert('Composition publiée. Le lien est copié : colle-le dans WhatsApp.');
+      }catch{
+        prompt('Composition publiée. Copie ce lien puis colle-le dans WhatsApp :',shareUrl);
       }
     },onClose:loadMatchList});
   }catch(e){root.innerHTML='<div class="card"><h2>Composition indisponible</h2><p class="muted">'+esc(e.message)+'</p></div>';}
