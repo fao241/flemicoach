@@ -5,6 +5,15 @@ create table if not exists public.match_compositions (
   updated_at timestamptz not null default now(),
   updated_by uuid references auth.users(id) on delete set null
 );
+-- Upgrade path from the removed Composition V1: CREATE TABLE IF NOT EXISTS
+-- does not add V2 columns to an already existing table.
+alter table public.match_compositions
+  add column if not exists layout jsonb not null default '[]'::jsonb,
+  add column if not exists updated_by uuid references auth.users(id) on delete set null;
+
+-- V1 accepted format 9. V2 supports 5 / 8 / 11 only, without imposing a formation.
+update public.match_compositions set format = 11 where format not in (5,8,11);
+
 alter table public.match_compositions enable row level security;
 revoke all on table public.match_compositions from anon, authenticated;
 grant select, insert, update, delete on public.match_compositions to authenticated;
