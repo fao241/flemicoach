@@ -44,7 +44,10 @@ function completedEvents() { return events.filter(e => e.event_date <= todayISO(
 async function init() {
   if (!isConfigured()) { showOnly('configError'); return; }
 
-  const token = new URLSearchParams(location.search).get('event');
+  const params = new URLSearchParams(location.search);
+  const compositionToken = params.get('composition');
+  if (compositionToken) { showOnly('publicScreen'); await initPublicComposition(compositionToken); return; }
+  const token = params.get('event');
   if (token) { showOnly('publicScreen'); await initPublic(token); return; }
 
   const { data } = await supabase.auth.getSession();
@@ -83,6 +86,38 @@ $('signupForm').addEventListener('submit', async (e) => {
 });
 
 $('logoutBtn').addEventListener('click', async () => { await supabase.auth.signOut(); location.href = baseAppUrl(); });
+
+// ---------- Public composition ----------
+async function initPublicComposition(token) {
+  $('publicLoading').textContent = 'Chargement de la composition…';
+  const { data, error } = await supabase.rpc('get_public_match_composition', { p_token: token });
+  if (error || !data) {
+    $('publicLoading').innerHTML = '<strong>Composition indisponible.</strong><br><span class="muted">Le lien est invalide ou la composition n’est plus publiée.</span>';
+    return;
+  }
+  const layout = Array.isArray(data.layout) ? data.layout : [];
+  const placed = new Map(layout.filter(x => x.placed).map(x => [x.player_id, x]));
+  const playerMap = new Map((data.players || []).map(p => [p.id, p]));
+  const starters = (data.players || []).filter(p => placed.has(p.id));
+  const bench = (data.players || []).filter(p => !placed.has(p.id));
+  const pitchPlayers = starters.map(p => {
+    const pos = placed.get(p.id) || {};
+    const left = Math.max(4, Math.min(96, Number(pos.x) || 50));
+    const top = Math.max(3, Math.min(97, Number(pos.y) || 50));
+    return '<div class="comp-player" style="left:'+left+'%;top:'+top+'%">'+esc(p.name)+'</div>';
+  }).join('');
+  $('publicLoading').classList.add('hidden');
+  $('publicContent').classList.remove('hidden');
+  $('publicTeam').textContent = 'Composition · Foot à ' + data.format;
+  $('publicTitle').textContent = data.title || 'Match';
+  $('publicMeta').textContent = `${fmtDate(data.event_date)} · ${time5(data.start_time)}${data.location ? ' · '+data.location : ''}`;
+  $('publicForm').classList.add('hidden');
+  $('publicContent').insertAdjacentHTML('beforeend',
+    '<div class="composition-shell top-gap"><div><div class="composition-pitch public-composition-pitch"><div class="pitch-half"></div><div class="pitch-circle"></div><div class="pitch-box top"></div><div class="pitch-box bottom"></div>'+pitchPlayers+'</div></div>'+
+    '<aside class="composition-bench"><h3>Remplaçants</h3><div class="composition-bench-list">'+
+    (bench.length ? bench.map(p=>'<div class="bench-player">'+esc(p.name)+'</div>').join('') : '<div class="composition-empty">Aucun</div>')+
+    '</div></aside></div>');
+}
 
 // ---------- Public parent page ----------
 async function initPublic(token) {
