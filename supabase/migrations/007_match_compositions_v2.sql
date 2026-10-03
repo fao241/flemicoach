@@ -31,3 +31,46 @@ create policy match_compositions_update_member on public.match_compositions for 
 create policy match_compositions_delete_member on public.match_compositions for delete to authenticated using (
   exists(select 1 from public.events e where e.id=event_id and e.type='match' and public.is_team_member(e.team_id))
 );
+
+-- Public, read-only composition sharing. The public page only receives rows
+-- through this token-scoped RPC; direct anonymous table access remains revoked.
+alter table public.match_compositions
+  add column if not exists public_token uuid not null default gen_random_uuid(),
+  add column if not exists published boolean not null default false,
+  add column if not exists published_at timestamptz;
+
+create unique index if not exists match_compositions_public_token_key
+  on public.match_compositions(public_token);
+
+create or replace function public.get_public_match_composition(p_token uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select jsonb_build_object(
+    'title', e.title,
+    'event_date', e.event_date,
+    'start_time', e.start_time,
+    'location', e.location,
+    'format', c.format,
+    'layout', c.layout,
+    'players', coalesce((
+      select jsonb_agg(jsonb_build_object('id', p.id, 'name', p.name) order by p.name)
+      from public.match_callups mc
+      join public.players p on p.id = mc.player_id
+      where mc.event_id = e.id and p.active = true
+    ), '[]'::jsonb)
+  )
+  from public.match_compositions c
+  join public.events e on e.id = c.event_id
+  where c.public_token = p_token
+    and c.published = true
+    and e.cancelled = false
+    and e.type = 'match'
+  limit 1;
+$$;
+
+revoke all on function public.get_public_match_composition(uuid) from public;
+grant execute on function public.get_public_match_composition(uuid) to anon, authenticated;
