@@ -68,18 +68,74 @@ function compositionPublicLink(token=publicToken){
  base.searchParams.set('composition',token);
  return base.href;
 }
+
+function wrapText(ctx,text,maxWidth){
+ const words=String(text||'').split(/\s+/), lines=[]; let line='';
+ for(const word of words){
+  const test=line?line+' '+word:word;
+  if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=word}else line=test;
+ }
+ if(line)lines.push(line);
+ return lines;
+}
+async function compositionImage(match){
+ const W=1080,H=1450,margin=54,pitchX=90,pitchY=190,pitchW=900,pitchH=1030;
+ const canvas=document.createElement('canvas'); canvas.width=W;canvas.height=H;
+ const ctx=canvas.getContext('2d');
+ ctx.fillStyle='#f5f7f5';ctx.fillRect(0,0,W,H);
+ ctx.fillStyle='#153a25';ctx.font='800 46px system-ui,sans-serif';ctx.fillText('FlemiCoach · Composition',margin,72);
+ ctx.font='700 28px system-ui,sans-serif';ctx.fillStyle='#44534a';ctx.fillText(match,margin,122);
+ ctx.font='700 23px system-ui,sans-serif';ctx.fillStyle='#166534';ctx.fillText('Foot à '+currentFormat,margin,160);
+
+ ctx.fillStyle='#25894b';ctx.fillRect(pitchX,pitchY,pitchW,pitchH);
+ ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=5;
+ ctx.strokeRect(pitchX+22,pitchY+22,pitchW-44,pitchH-44);
+ ctx.beginPath();ctx.moveTo(pitchX+22,pitchY+pitchH/2);ctx.lineTo(pitchX+pitchW-22,pitchY+pitchH/2);ctx.stroke();
+ ctx.beginPath();ctx.arc(pitchX+pitchW/2,pitchY+pitchH/2,105,0,Math.PI*2);ctx.stroke();
+ ctx.strokeRect(pitchX+260,pitchY+22,380,150);
+ ctx.strokeRect(pitchX+260,pitchY+pitchH-172,380,150);
+
+ const placed=new Map(layout.filter(x=>x.placed).map(x=>[x.player_id,x]));
+ ctx.textAlign='center';ctx.textBaseline='middle';
+ for(const p of players){
+  const pos=placed.get(p.id); if(!pos)continue;
+  const x=pitchX+(clamp(+pos.x||50,4,96)/100)*pitchW;
+  const y=pitchY+(clamp(+pos.y||50,3,97)/100)*pitchH;
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,52,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle='#153a25';ctx.lineWidth=3;ctx.stroke();
+  ctx.fillStyle='#153a25';ctx.font='800 19px system-ui,sans-serif';
+  const lines=wrapText(ctx,p.name,84).slice(0,3);
+  lines.forEach((line,i)=>ctx.fillText(line,x,y+(i-(lines.length-1)/2)*20));
+ }
+ ctx.textAlign='left';ctx.textBaseline='alphabetic';
+ const bench=players.filter(p=>!placed.has(p.id));
+ ctx.fillStyle='#153a25';ctx.font='800 27px system-ui,sans-serif';ctx.fillText('Remplaçants',margin,1288);
+ ctx.fillStyle='#44534a';ctx.font='650 22px system-ui,sans-serif';
+ const benchText=bench.map(p=>p.name).join(' · ')||'Aucun';
+ wrapText(ctx,benchText,W-margin*2).slice(0,4).forEach((line,i)=>ctx.fillText(line,margin,1326+i*29));
+ return new Promise(resolve=>canvas.toBlob(resolve,'image/png',0.95));
+}
 async function share(){
  if(!eventId)return;
  const saved=await save({published:true,published_at:new Date().toISOString()});
  const url=compositionPublicLink(saved.public_token);
  const match=$('compositionMatch').selectedOptions[0]?.textContent||'Match';
- const text=`⚽ Composition FlemiCoach\n${match}\nConsulte la composition : ${url}`;
+ const text=`⚽ Composition FlemiCoach\n${match}\nVoir la composition complète : ${url}`;
  if(navigator.share){
-  try{await navigator.share({title:'Composition FlemiCoach',text,url});$('compositionStatus').textContent='Partage ouvert.';return}
-  catch(e){if(e.name==='AbortError')return}
+  try{
+   const blob=await compositionImage(match);
+   const file=blob?new File([blob],'composition-flemicoach.png',{type:'image/png'}):null;
+   if(file&&navigator.canShare?.({files:[file]})){
+    await navigator.share({title:'Composition FlemiCoach',text,url,files:[file]});
+   }else{
+    await navigator.share({title:'Composition FlemiCoach',text,url});
+   }
+   $('compositionStatus').textContent='Composition visuelle prête à être partagée.';
+   return;
+  }catch(e){if(e.name==='AbortError')return}
  }
  await navigator.clipboard.writeText(url);
- $('compositionStatus').textContent='Lien public copié. Colle-le dans WhatsApp, Mail, Messages…';
+ $('compositionStatus').textContent='Lien public copié : il ouvre le terrain complet avec les joueurs placés.';
 }
 function reset(){layout=[];render();$('compositionStatus').textContent='Placement réinitialisé (enregistre pour confirmer).'}
 async function init(){
